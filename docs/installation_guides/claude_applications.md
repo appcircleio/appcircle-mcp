@@ -295,10 +295,9 @@ For Claude Desktop, server logs appear in Settings → Developer → View logs.
 No local install. Claude Code connects to Appcircle's hosted MCP server and sends your token on each request.
 
 ```bash
-claude mcp add appcircle \
-  --transport http \
-  --header "Authorization: Bearer appcircle_access_token" \
-  https://mcp.appcircle.io
+claude mcp add appcircle https://mcp.appcircle.io \
+--transport http \
+--header "Authorization: Bearer appcircle_access_token"
 ```
 
 ---
