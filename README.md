@@ -6,7 +6,7 @@ MCP server for [Appcircle](https://appcircle.io): exposes Build, Signing Identit
 
 - CI/CD and Workflow Intelligence: Monitor pipeline runs, track release status, and get insights into your mobile CI/CD workflows.
 - Configuration and Environment Insights: Query build configurations and signing setup to understand how a project is configured and where issues may originate.
-- Reporting and Operational Insights: Generate summaries of CI stability, recurring issues, pipeline performance, and overall CI/CD health.
+- Reporting and Operational Insights: Generate summaries of CI stability, recurring issues, pipeline performance, and overall CI/CD health. 
 
 
 ## Running Modes
@@ -217,6 +217,13 @@ Tools are exposed via MCP `tools/list`. Reference below lists all tools by tools
   - `size`: Items per page (1-100, default: 50). (number, optional)
   - `build_profile_name`: Filter by build profile name. (string, optional)
   - `organization_id`: Filter by organization UUID. (string, optional)
+
+- **get_build_insights_report** - Get a computed Build Insights Report (Health Snapshot + Trends, Root Cause, Artifact Health, Workflow Quality, Queue Time, and Maturity Assessment analysis) over build history, aggregated server-side. Unlike get_build_history_report, this fetches every page internally and returns small pre-aggregated results instead of raw records.
+  - **Access level:** read
+  - `start_date`: Optional start date (YYYY-MM-DD) for the current period. Default: last 30 days. (string, optional)
+  - `end_date`: Optional end date (YYYY-MM-DD) for the current period. (string, optional)
+  - `sections`: Optional list of sections to compute: `health_snapshot`, `root_cause`, `artifact_health`, `workflow_quality`, `queue_time`, `maturity_assessment`. Default: all six. (array of strings, optional)
+  - `include_sub_orgs`: If true, keep cross-org build records in history-derived metrics instead of filtering to the token's own organization. Default: false. (boolean, optional)
 
 - **get_distribution_app_version_report** - Get daily usage report for distributed app versions. Paginated; supports filters by profile, OS, organization.
   - **Access level:** read

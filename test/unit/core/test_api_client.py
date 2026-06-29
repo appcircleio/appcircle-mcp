@@ -1,5 +1,8 @@
 """Unit tests for ApiClient: GET, POST, PATCH, PUT, DELETE with mocked API."""
 
+from unittest.mock import patch
+
+import httpx
 import pytest
 from httpx import Response
 
@@ -28,6 +31,39 @@ class TestApiClientInit:
             assert client.headers["Authorization"] == "Bearer per-request-token"
         finally:
             reset_request_token(tok)
+
+
+@pytest.mark.asyncio
+class TestApiClientConnectionReuse:
+    """Tests for the optional `async with ApiClient()` connection-reuse session."""
+
+    async def test_context_manager_reuses_single_client_across_calls(self, mocked_api):
+        """Two calls inside one `async with ApiClient()` session share one httpx client."""
+        mocked_api.get("/build/v2/profiles").mock(return_value=Response(200, json=[]))
+        with patch("httpx.AsyncClient", wraps=httpx.AsyncClient) as mock_client_cls:
+            async with ApiClient() as client:
+                await client.get("/build/v2/profiles")
+                await client.get("/build/v2/profiles")
+            assert mock_client_cls.call_count == 1
+
+    async def test_without_context_manager_creates_a_client_per_call(self, mocked_api):
+        """Without `async with`, behavior is unchanged: each call gets its own client."""
+        mocked_api.get("/build/v2/profiles").mock(return_value=Response(200, json=[]))
+        with patch("httpx.AsyncClient", wraps=httpx.AsyncClient) as mock_client_cls:
+            client = ApiClient()
+            await client.get("/build/v2/profiles")
+            await client.get("/build/v2/profiles")
+            assert mock_client_cls.call_count == 2
+
+    async def test_context_manager_closes_client_on_exit(self, mocked_api):
+        """Exiting the session closes the shared client and clears the reference."""
+        mocked_api.get("/build/v2/profiles").mock(return_value=Response(200, json=[]))
+        async with ApiClient() as client:
+            await client.get("/build/v2/profiles")
+            shared_client = client._client
+            assert shared_client is not None
+        assert client._client is None
+        assert shared_client.is_closed
 
 
 @pytest.mark.asyncio
@@ -103,12 +139,9 @@ class TestApiClientPost:
             return_value=Response(200, json={"uploaded": True})
         )
         client = ApiClient()
-        # Simulate file upload: pass files dict; client should pop Content-Type
         await client.post("/upload", files={"file": ("name", b"content")})
-        # Header should not be application/json when files are present
         headers = mocked_api.calls.last.request.headers
-        # When files are used, httpx sets multipart boundary; we just check no JSON content-type
-        # Our code pops Content-Type so boundary is set by httpx
+        # httpx sets the multipart boundary once Content-Type is popped
         assert "multipart/form-data" in headers.get("content-type", "")
 
     async def test_post_raises_on_4xx(self, mocked_api):

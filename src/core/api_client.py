@@ -1,6 +1,7 @@
 """HTTP client for Appcircle API."""
 import httpx
-from typing import Any, Optional
+from contextlib import asynccontextmanager
+from typing import Any, AsyncIterator, Optional
 
 from ..config.settings import settings
 from .auth import get_access_token
@@ -16,6 +17,27 @@ class ApiClient:
             "Authorization": f"Bearer {get_access_token()}",
             "Content-Type": "application/json",
         }
+        self._client: Optional[httpx.AsyncClient] = None
+
+    async def __aenter__(self) -> "ApiClient":
+        """Enter a connection-reuse session: subsequent calls share one httpx client."""
+        self._client = httpx.AsyncClient()
+        return self
+
+    async def __aexit__(self, *exc_info: Any) -> None:
+        if self._client is not None:
+            await self._client.aclose()
+            self._client = None
+
+    @asynccontextmanager
+    async def _get_client(self) -> AsyncIterator[httpx.AsyncClient]:
+        """Yield the shared client if inside an `async with ApiClient()` session,
+        otherwise fall back to a fresh one-off client (today's behavior)."""
+        if self._client is not None:
+            yield self._client
+        else:
+            async with httpx.AsyncClient() as client:
+                yield client
 
     async def get(
         self,
@@ -34,7 +56,7 @@ class ApiClient:
         """
         logger.debug(f"GET {endpoint} with params: {params}")
 
-        async with httpx.AsyncClient() as client:
+        async with self._get_client() as client:
             response = await client.get(
                 f"{self.base_url}{endpoint}",
                 headers=self.headers,
@@ -72,8 +94,8 @@ class ApiClient:
         headers = self.headers.copy()
         if files:
             headers.pop("Content-Type", None)  # Let httpx set it for multipart
-        
-        async with httpx.AsyncClient() as client:
+
+        async with self._get_client() as client:
             response = await client.post(
                 f"{self.base_url}{endpoint}",
                 headers=headers,
@@ -104,8 +126,8 @@ class ApiClient:
         logger.debug(f"PATCH {endpoint}")
         if json_data:
             logger.debug(f"PATCH payload: {json_data}")
-        
-        async with httpx.AsyncClient() as client:
+
+        async with self._get_client() as client:
             response = await client.patch(
                 f"{self.base_url}{endpoint}",
                 headers=self.headers,
@@ -127,8 +149,8 @@ class ApiClient:
             Response JSON data
         """
         logger.debug(f"DELETE {endpoint}")
-        
-        async with httpx.AsyncClient() as client:
+
+        async with self._get_client() as client:
             response = await client.delete(
                 f"{self.base_url}{endpoint}",
                 headers=self.headers,
@@ -156,8 +178,8 @@ class ApiClient:
         logger.debug(f"PUT {endpoint}")
         if json_data:
             logger.debug(f"PUT payload: {json_data}")
-        
-        async with httpx.AsyncClient() as client:
+
+        async with self._get_client() as client:
             response = await client.put(
                 f"{self.base_url}{endpoint}",
                 headers=self.headers,
