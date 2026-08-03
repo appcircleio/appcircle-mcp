@@ -79,6 +79,32 @@ async def test_flow_status_filter(integration_settings):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
+async def test_filters_and_sort(integration_settings):
+    """market_place_type/has_rc_binary/store_status/sort/sort_direction filters return success and are reflected in meta."""
+    response = await get_publish_profiles(
+        platform_type="ios",
+        market_place_type=[1],
+        sort=2,
+        sort_direction=2,
+    )
+    assert response.get("success"), response.get("error")
+    meta = response.get("meta", {})
+    assert meta.get("market_place_type") == [1]
+    assert meta.get("sort") == 2
+    assert meta.get("sort_direction") == 2
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_market_place_type_is_platform_specific(integration_settings):
+    """A market_place_type value valid for android is invalid for ios."""
+    response = await get_publish_profiles(platform_type="ios", market_place_type=[2])
+    assert response.get("success") is False
+    assert response["error"]["type"] == "validation_error"
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
 async def test_error_returns_envelope(integration_settings):
     """On API error, returns standard error envelope."""
     from src.config.settings import settings

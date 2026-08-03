@@ -10,5 +10,9 @@ from . import get_distribution_sent_report
 from . import get_enterprise_app_store_app_usage_report
 from . import get_publish_status_report
 from . import get_publish_resign_report
+from . import get_build_activity_log
+from . import get_signing_activity_log
+from . import get_publish_activity_log
+from . import get_build_queue_waiting_report
 
 logger.debug("Report tools imported.")

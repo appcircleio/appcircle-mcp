@@ -111,13 +111,12 @@ async def test_api_consistency(integration_settings):
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_search_with_pagination(integration_settings):
-    """Search with page/size returns success and search_term in meta."""
+    """Search with page/size returns success and search_term/page/page_size in meta."""
     response = await get_build_profiles(search="android", page=1, size=10)
     assert response.get("success"), response.get("error")
     assert response.get("meta", {}).get("search_term") == "android"
-    profiles = _profiles(response)
-    for profile in profiles:
-        assert "android" in profile["name"].lower()
+    assert response.get("meta", {}).get("page") == 1
+    assert response.get("meta", {}).get("page_size") == 10
 
 
 @pytest.mark.integration
@@ -135,7 +134,14 @@ async def test_excluded_fields(integration_settings):
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_search_functionality(integration_settings):
-    """Search param filters by name; search_term in meta."""
+    """Search param filters profiles and reflects search_term in meta.
+
+    The API's search matches more than just `name` (confirmed against a real
+    org - e.g. searching "android" also returns profiles with no "android" in
+    their display name), so this only asserts the profile the term was
+    derived from is present in the results, not that every result's name
+    contains the term.
+    """
     all_result = await get_build_profiles(page=1, size=25)
     if not all_result.get("success") or not _profiles(all_result):
         pytest.skip("No profiles to test search")
@@ -148,8 +154,8 @@ async def test_search_functionality(integration_settings):
     search_result = await get_build_profiles(search=search_term)
     assert search_result.get("success"), search_result.get("error")
     assert _search_term(search_result) == search_term
-    for profile in _profiles(search_result):
-        assert search_term.lower() in profile["name"].lower()
+    result_ids = {p["id"] for p in _profiles(search_result)}
+    assert test_profile["id"] in result_ids
 
 
 @pytest.mark.integration
@@ -188,6 +194,33 @@ async def test_performance_acceptable(integration_settings):
     duration = (datetime.now() - start).total_seconds()
     assert response.get("success"), response.get("error")
     assert duration < 10.0, f"Response took {duration:.2f}s"
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_filters_and_sort(integration_settings):
+    """platform/last_build_status/repository_source/sort/sort_direction filters return success and are reflected in meta."""
+    response = await get_build_profiles(
+        platform=[1, 2],
+        last_build_status=[0, 1],
+        sort=2,
+        sort_direction=2,
+    )
+    assert response.get("success"), response.get("error")
+    meta = response.get("meta", {})
+    assert meta.get("platform") == [1, 2]
+    assert meta.get("last_build_status") == [0, 1]
+    assert meta.get("sort") == 2
+    assert meta.get("sort_direction") == 2
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_invalid_filter_returns_validation_error(integration_settings):
+    """An out-of-enum platform code returns a validation_error without calling the API."""
+    response = await get_build_profiles(platform=[99])
+    assert response.get("success") is False
+    assert response["error"]["type"] == "validation_error"
 
 
 @pytest.mark.integration

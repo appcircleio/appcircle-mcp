@@ -110,6 +110,56 @@ async def test_get_build_profiles_excluded_fields(mocked_api):
 
 
 @pytest.mark.asyncio
+async def test_get_build_profiles_filters_and_sort(mocked_api, sample_build_profiles):
+    """platform, last_build_status, repository_source, sort, sort_direction are passed to the API and reflected in meta."""
+    mocked_api.get("/build/v2/profiles").mock(
+        return_value=Response(200, json=sample_build_profiles)
+    )
+
+    result = await get_build_profiles(
+        platform=[1, 2],
+        last_build_status=[0, 1],
+        repository_source=[1],
+        sort=2,
+        sort_direction=2,
+    )
+
+    assert result["success"] is True
+    assert result["meta"]["platform"] == [1, 2]
+    assert result["meta"]["last_build_status"] == [0, 1]
+    assert result["meta"]["repository_source"] == [1]
+    assert result["meta"]["sort"] == 2
+    assert result["meta"]["sort_direction"] == 2
+    params = mocked_api.calls.last.request.url.params
+    assert params.get_list("platform") == ["1", "2"]
+    assert params.get_list("lastBuildStatus") == ["0", "1"]
+    assert params.get_list("repositorySource") == ["1"]
+    assert params.get("sort") == "2"
+    assert params.get("sortDirection") == "2"
+
+
+@pytest.mark.asyncio
+async def test_get_build_profiles_invalid_platform_returns_validation_error(mocked_api):
+    """An unknown platform code returns a validation_error without calling the API."""
+    result = await get_build_profiles(platform=[99])
+
+    assert result["success"] is False
+    assert result["error"]["tool"] == "get_build_profiles"
+    assert result["error"]["type"] == "validation_error"
+    assert not mocked_api.calls
+
+
+@pytest.mark.asyncio
+async def test_get_build_profiles_invalid_sort_returns_validation_error(mocked_api):
+    """An unknown sort code returns a validation_error without calling the API."""
+    result = await get_build_profiles(sort=99)
+
+    assert result["success"] is False
+    assert result["error"]["type"] == "validation_error"
+    assert not mocked_api.calls
+
+
+@pytest.mark.asyncio
 async def test_get_build_profiles_error_returns_unified_envelope(mocked_api):
     """When API returns 500, tool returns standard error envelope."""
     mocked_api.get("/build/v2/profiles").mock(

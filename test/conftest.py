@@ -281,3 +281,144 @@ def sample_publish_resign_report_response():
             }
         ],
     }
+
+
+@pytest.fixture
+def sample_build_activity_log_response():
+    """Sample build activity log API response (GET /report/v1/build/activity)."""
+    return {
+        "pagination": {
+            "page": 1,
+            "perPage": 50,
+            "pageCount": 2,
+            "totalCount": 60,
+            "enablePrevious": False,
+            "enableNext": True,
+        },
+        "data": [
+            {
+                "profileId": "aaaaaaaa-0001-0000-0000-000000000001",
+                "codePushAppId": None,
+                "profileName": "iOS Build",
+                "organizationId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                "organizationName": "Acme",
+                "rootOrganizationId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                "userId": "aaaaaaaa-0002-0000-0000-000000000002",
+                "userRole": "owner",
+                "userEmail": "user@example.com",
+                "platformType": 1,
+                "action": 101,
+                "description": "Workflow 'Default Push Workflow' updated for 'iOS Build' profile",
+                "createDate": "2026-06-22T12:15:48.681421+00:00",
+                "updateDate": "2026-06-22T12:15:48.6814215+00:00",
+            }
+        ],
+        "summary": {"numberOfTransactions": 60},
+    }
+
+
+@pytest.fixture
+def sample_signing_activity_log_response():
+    """Sample signing activity log API response (GET /report/v2/sign/activity)."""
+    return {
+        "pagination": {
+            "page": 1,
+            "perPage": 50,
+            "pageCount": 2,
+            "totalCount": 70,
+            "enablePrevious": False,
+            "enableNext": True,
+        },
+        "data": [
+            {
+                "profileId": "00000000-0000-0000-0000-000000000000",
+                "keystoreProvId": "aaaaaaaa-0001-0000-0000-000000000001",
+                "keystoreProvName": "iOS Distribution",
+                "organizationId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                "organizationName": "Acme",
+                "rootOrganizationId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                "userId": "00000000-0000-0000-0000-000000000000",
+                "userRole": "N/A",
+                "userEmail": "N/A",
+                "platformType": "iOS",
+                "action": 15,
+                "description": "'iOS Distribution' provision will be expired in 1 Month",
+                "createDate": "2026-06-22T13:36:21.7260341+00:00",
+                "updateDate": "2026-06-22T13:36:21.7260339+00:00",
+            }
+        ],
+    }
+
+
+@pytest.fixture
+def sample_publish_activity_log_response():
+    """Sample publish activity log API response (GET /report/v2/publish/activity)."""
+    return {
+        "pagination": {
+            "page": 1,
+            "perPage": 50,
+            "pageCount": 2,
+            "totalCount": 65,
+            "enablePrevious": False,
+            "enableNext": True,
+        },
+        "data": [
+            {
+                "profileId": "aaaaaaaa-0001-0000-0000-000000000001",
+                "profileName": "HelloWorldApp",
+                "publishFlowId": "00000000-0000-0000-0000-000000000000",
+                "organizationId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                "organizationName": "Acme",
+                "rootOrganizationId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                "userId": "aaaaaaaa-0002-0000-0000-000000000002",
+                "userRole": "owner",
+                "userEmail": "user@example.com",
+                "platformType": "iOS",
+                "action": 36,
+                "description": "Re-sign process started for the app 'HelloWorldApp v:1.0.0'",
+                "createDate": "2026-06-21T08:09:08.735138+00:00",
+                "updateDate": "2026-06-21T08:09:08.7351379+00:00",
+            }
+        ],
+    }
+
+
+@pytest.fixture
+def sample_build_queue_waiting_report_response():
+    """Sample build queue waiting report API response (GET /report/v1/build/queue-waiting)."""
+    return {
+        "pagination": {
+            "page": 1,
+            "perPage": 50,
+            "pageCount": 2,
+            "totalCount": 23,
+            "enablePrevious": False,
+            "enableNext": True,
+        },
+        "data": [
+            {
+                "id": "aaaaaaaa0001000000000001",
+                "organizationId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                "rootOrganizationId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                "organizationName": "Acme",
+                "userId": "aaaaaaaa-0002-0000-0000-000000000002",
+                "initiatedBy": "user@example.com",
+                "buildProfileName": "iOS Build",
+                "branchName": "main",
+                "commitId": "aaaaaaaa-0003-0000-0000-000000000003",
+                "triggerType": 0,
+                "os": 1,
+                "machinePlan": 0,
+                "xcodeVersion": "16.2.x",
+                "runnerArchitecture": 1,
+                "framework": 4,
+                "buildDuration": 1.0,
+                "buildStatus": 0,
+                "buildStartDate": "2026-06-11T10:00:44.997Z",
+                "buildFinishDate": "2026-06-11T10:00:55.995Z",
+                "createDate": "2026-07-24T09:13:18.3140705+00:00",
+                "updateDate": "2026-07-24T09:13:18.314071+00:00",
+            }
+        ],
+        "summary": {"standard": 12.5, "velocity": 3.2, "ultra": 0.0},
+    }

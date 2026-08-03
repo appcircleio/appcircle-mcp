@@ -25,6 +25,10 @@ class Settings:
     # Toolsets to exclude from registration (set via set_excluded_toolsets)
     EXCLUDED_TOOLSETS: set = set()
 
+    # Whether write/action tools register at all (set via set_write_tools_enabled).
+    # Default true: write tools are opt-out (set AC_MCP_ENABLE_WRITE_TOOLS=false to disable).
+    ENABLE_WRITE_TOOLS: bool = True
+
     @classmethod
     def set_access_token(cls, token: str) -> None:
         """Set the access token from MCP configuration."""
@@ -71,5 +75,10 @@ class Settings:
                 f"Valid toolsets: {sorted(TOOLSETS)}."
             )
         cls.EXCLUDED_TOOLSETS = normalized
+
+    @classmethod
+    def set_write_tools_enabled(cls, enabled: bool) -> None:
+        """Enable or disable registration of write/action tools."""
+        cls.ENABLE_WRITE_TOOLS = bool(enabled)
 
 settings = Settings()

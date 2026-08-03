@@ -126,6 +126,57 @@ async def test_get_publish_profiles_size_cap(mocked_api):
 
 
 @pytest.mark.asyncio
+async def test_get_publish_profiles_filters_and_sort(mocked_api):
+    """market_place_type, has_rc_binary, store_status, sort, sort_direction are passed to the API and reflected in meta."""
+    mocked_api.get("/publish/v2/profiles/ios").mock(
+        return_value=Response(200, json=SAMPLE_RESPONSE_WITH_PAGINATION)
+    )
+
+    result = await get_publish_profiles(
+        platform_type="ios",
+        market_place_type=[1, 4],
+        has_rc_binary=True,
+        store_status=["IN_REVIEW"],
+        sort=2,
+        sort_direction=2,
+    )
+
+    assert result["success"] is True
+    assert result["meta"]["market_place_type"] == [1, 4]
+    assert result["meta"]["has_rc_binary"] is True
+    assert result["meta"]["store_status"] == ["IN_REVIEW"]
+    assert result["meta"]["sort"] == 2
+    assert result["meta"]["sort_direction"] == 2
+    params = mocked_api.calls.last.request.url.params
+    assert params.get_list("marketPlaceType") == ["1", "4"]
+    assert params.get("hasRcBinary") == "true"
+    assert params.get_list("storeStatus") == ["IN_REVIEW"]
+    assert params.get("sort") == "2"
+    assert params.get("sortDirection") == "2"
+
+
+@pytest.mark.asyncio
+async def test_get_publish_profiles_market_place_type_is_platform_specific(mocked_api):
+    """A market_place_type value valid for android is invalid for ios (and vice versa)."""
+    result = await get_publish_profiles(platform_type="ios", market_place_type=[2])
+
+    assert result["success"] is False
+    assert result["error"]["tool"] == "get_publish_profiles"
+    assert result["error"]["type"] == "validation_error"
+    assert not mocked_api.calls
+
+
+@pytest.mark.asyncio
+async def test_get_publish_profiles_store_status_is_platform_specific(mocked_api):
+    """A store_status value valid for android is invalid for ios."""
+    result = await get_publish_profiles(platform_type="ios", store_status=["HALTED"])
+
+    assert result["success"] is False
+    assert result["error"]["type"] == "validation_error"
+    assert not mocked_api.calls
+
+
+@pytest.mark.asyncio
 async def test_get_publish_profiles_error_returns_unified_envelope(mocked_api):
     """On API error, returns standard error envelope."""
     mocked_api.get("/publish/v2/profiles/ios").mock(

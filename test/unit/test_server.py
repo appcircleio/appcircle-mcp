@@ -85,6 +85,64 @@ class TestMain:
             api_url="https://custom.api.example.com",
         )
 
+    def test_main_enables_write_tools_by_default(self, monkeypatch):
+        """main() calls set_write_tools_enabled(True) when AC_MCP_ENABLE_WRITE_TOOLS is unset (opt-out default)."""
+        monkeypatch.setenv("APPCIRCLE_ACCESS_TOKEN", "token")
+        monkeypatch.setenv("APPCIRCLE_API_URL", "https://api.appcircle.io")
+        monkeypatch.delenv("AC_MCP_ENABLE_WRITE_TOOLS", raising=False)
+
+        with patch("src.server.settings") as mock_settings:
+            with patch("src.server.mcp") as mock_mcp:
+                mock_mcp.run = MagicMock()
+                with patch("src.server.logger"):
+                    import src.server as server_module
+                    server_module.main()
+        mock_settings.set_write_tools_enabled.assert_called_once_with(True)
+
+    @pytest.mark.parametrize("env_value", ["true", "TRUE", "1", "yes", "on"])
+    def test_main_enables_write_tools_from_truthy_env(self, monkeypatch, env_value):
+        """main() calls set_write_tools_enabled(True) for various truthy AC_MCP_ENABLE_WRITE_TOOLS values."""
+        monkeypatch.setenv("APPCIRCLE_ACCESS_TOKEN", "token")
+        monkeypatch.setenv("APPCIRCLE_API_URL", "https://api.appcircle.io")
+        monkeypatch.setenv("AC_MCP_ENABLE_WRITE_TOOLS", env_value)
+
+        with patch("src.server.settings") as mock_settings:
+            with patch("src.server.mcp") as mock_mcp:
+                mock_mcp.run = MagicMock()
+                with patch("src.server.logger"):
+                    import src.server as server_module
+                    server_module.main()
+        mock_settings.set_write_tools_enabled.assert_called_once_with(True)
+
+    def test_main_disables_write_tools_for_unrecognized_env(self, monkeypatch):
+        """main() calls set_write_tools_enabled(False) for an unrecognized AC_MCP_ENABLE_WRITE_TOOLS value."""
+        monkeypatch.setenv("APPCIRCLE_ACCESS_TOKEN", "token")
+        monkeypatch.setenv("APPCIRCLE_API_URL", "https://api.appcircle.io")
+        monkeypatch.setenv("AC_MCP_ENABLE_WRITE_TOOLS", "nope")
+
+        with patch("src.server.settings") as mock_settings:
+            with patch("src.server.mcp") as mock_mcp:
+                mock_mcp.run = MagicMock()
+                with patch("src.server.logger"):
+                    import src.server as server_module
+                    server_module.main()
+        mock_settings.set_write_tools_enabled.assert_called_once_with(False)
+
+    @pytest.mark.parametrize("env_value", ["false", "FALSE", "0", "no", "off"])
+    def test_main_disables_write_tools_from_explicit_falsy_env(self, monkeypatch, env_value):
+        """main() calls set_write_tools_enabled(False) when explicitly opted out (opt-out path)."""
+        monkeypatch.setenv("APPCIRCLE_ACCESS_TOKEN", "token")
+        monkeypatch.setenv("APPCIRCLE_API_URL", "https://api.appcircle.io")
+        monkeypatch.setenv("AC_MCP_ENABLE_WRITE_TOOLS", env_value)
+
+        with patch("src.server.settings") as mock_settings:
+            with patch("src.server.mcp") as mock_mcp:
+                mock_mcp.run = MagicMock()
+                with patch("src.server.logger"):
+                    import src.server as server_module
+                    server_module.main()
+        mock_settings.set_write_tools_enabled.assert_called_once_with(False)
+
     def test_main_logs_excluded_toolsets_when_non_empty(self, monkeypatch):
         """main() logs excluded toolsets when EXCLUDED_TOOLSETS is set."""
         monkeypatch.setenv("APPCIRCLE_ACCESS_TOKEN", "token")
@@ -132,6 +190,7 @@ class TestMain:
         """GET /health succeeds without Authorization header."""
         from starlette.testclient import TestClient
 
+        from src import __version__
         from src.mcp_instance import mcp
         from src.server import TokenExtractionMiddleware
 
@@ -141,7 +200,23 @@ class TestMain:
         client = TestClient(app)
         response = client.get("/health")
         assert response.status_code == 200
-        assert response.json() == {"status": "ok"}
+        assert response.json() == {"status": "ok", "version": __version__}
+
+    def test_health_version_matches_package_metadata(self):
+        """GET /health version field is a non-empty string matching the installed package version."""
+        from importlib.metadata import version as pkg_version
+
+        from starlette.testclient import TestClient
+
+        from src.mcp_instance import mcp
+        from src.server import TokenExtractionMiddleware
+
+        mcp.settings.streamable_http_path = "/"
+        app = mcp.streamable_http_app()
+        app.add_middleware(TokenExtractionMiddleware)
+        client = TestClient(app)
+        response = client.get("/health")
+        assert response.json()["version"] == pkg_version("appcircle-mcp-server")
 
     def test_middleware_accepts_bearer_token(self):
         """Middleware passes through when Authorization: Bearer is present."""

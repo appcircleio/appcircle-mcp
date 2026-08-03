@@ -65,31 +65,66 @@ class ApiClient:
             )
             response.raise_for_status()
             logger.debug(f"GET {endpoint} successful")
-            return response.json()
-        
+            if not response.content:
+                return {}
+            try:
+                return response.json()
+            except ValueError:
+                return {}
+
+    async def get_text(
+        self,
+        endpoint: str,
+        params: Optional[dict[str, Any]] = None
+    ) -> str:
+        """
+        Make a GET request and return the raw text body (not JSON).
+
+        Used for endpoints that return plain text, such as build/publish logs.
+
+        Args:
+            endpoint: API endpoint (e.g., "/build/v2/commits/{id}/builds/{id}/logs")
+            params: Optional query parameters
+
+        Returns:
+            Response body as text
+        """
+        logger.debug(f"GET {endpoint} (text) with params: {params}")
+
+        async with self._get_client() as client:
+            response = await client.get(
+                f"{self.base_url}{endpoint}",
+                headers=self.headers,
+                params=params,
+                timeout=self.timeout,
+            )
+            response.raise_for_status()
+            logger.debug(f"GET {endpoint} (text) successful")
+            return response.text
+
     async def post(
         self,
         endpoint: str,
         json_data: Optional[dict[str, Any]] = None,
         data: Optional[dict[str, Any]] = None,
         files: Optional[dict[str, Any]] = None,
+        params: Optional[dict[str, Any]] = None,
     ) -> Any:
         """
         Make a POST request.
-        
+
         Args:
             endpoint: API endpoint (e.g., "/build/v2/profiles")
             json_data: Optional JSON payload
             data: Optional form data (for multipart/form-data)
             files: Optional files for upload
-            
+            params: Optional query parameters
+
         Returns:
             Response JSON data
         """
-        logger.debug(f"POST {endpoint}")
-        if json_data:
-            logger.debug(f"POST payload: {json_data}")
-        
+        logger.debug(f"POST {endpoint} with params: {params}")
+
         # Prepare headers (remove Content-Type for file uploads)
         headers = self.headers.copy()
         if files:
@@ -102,12 +137,18 @@ class ApiClient:
                 json=json_data,
                 data=data,
                 files=files,
+                params=params,
                 timeout=self.timeout,
             )
             response.raise_for_status()
             logger.debug(f"POST {endpoint} successful")
-            return response.json()
-    
+            if not response.content:
+                return {}
+            try:
+                return response.json()
+            except ValueError:
+                return {}
+
     async def patch(
         self,
         endpoint: str,
@@ -136,7 +177,12 @@ class ApiClient:
             )
             response.raise_for_status()
             logger.debug(f"PATCH {endpoint} successful")
-            return response.json()
+            if not response.content:
+                return {}
+            try:
+                return response.json()
+            except ValueError:
+                return {}
         
     async def delete(self, endpoint: str) -> Any:
         """
@@ -158,24 +204,31 @@ class ApiClient:
             )
             response.raise_for_status()
             logger.debug(f"DELETE {endpoint} successful")
-            return response.json()
+            if not response.content:
+                return {}
+            try:
+                return response.json()
+            except ValueError:
+                return {}
     
     async def put(
         self,
         endpoint: str,
         json_data: Optional[dict[str, Any]] = None,
+        params: Optional[dict[str, Any]] = None,
     ) -> Any:
         """
         Make a PUT request.
-        
+
         Args:
             endpoint: API endpoint (e.g., "/build/v2/profiles/{id}")
             json_data: Optional JSON payload for full update
-            
+            params: Optional query parameters
+
         Returns:
             Response JSON data
         """
-        logger.debug(f"PUT {endpoint}")
+        logger.debug(f"PUT {endpoint} with params: {params}")
         if json_data:
             logger.debug(f"PUT payload: {json_data}")
 
@@ -184,8 +237,14 @@ class ApiClient:
                 f"{self.base_url}{endpoint}",
                 headers=self.headers,
                 json=json_data,
+                params=params,
                 timeout=self.timeout,
             )
             response.raise_for_status()
             logger.debug(f"PUT {endpoint} successful")
-            return response.json()
+            if not response.content:
+                return {}
+            try:
+                return response.json()
+            except ValueError:
+                return {}

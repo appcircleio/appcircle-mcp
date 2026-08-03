@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "appcircle-mcp-server"
-version = "0.1.0"
+version = "1.2.0"
 description = "MCP server for Appcircle: build, distribution, enterprise app store, publish, and reporting tools."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -24,7 +24,7 @@ classifiers = [
   "Topic :: Software Development",
 ]
 dependencies = [
-  "mcp==1.26.0",
+  "mcp==1.28.1",
   "fastmcp==3.2.0",
   "httpx==0.28.1",
   "pydantic==2.12.5",
@@ -73,6 +73,7 @@ addopts = "-v --tb=short"
 norecursedirs = ".git .hg __pycache__ .tox .env venv ENV dist"
 markers = [
   "integration: integration tests (require APPCIRCLE_ACCESS_TOKEN and real API); run with pytest test/integration/ -v",
+  "integration_write: write/action integration tests (mutate real data against a real org); require APPCIRCLE_ACCESS_TOKEN AND APPCIRCLE_RUN_WRITE_INTEGRATION_TESTS=true, skipped otherwise even when running the full integration suite",
 ]
 filterwarnings = [
   "ignore::DeprecationWarning",
