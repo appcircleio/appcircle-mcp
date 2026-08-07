@@ -286,7 +286,7 @@ Or using npx mcp-remote:
 ## Troubleshooting
 
 - **Server not showing in Cursor:** Ensure the JSON is valid, the config file is in the right place (`.cursor/mcp.json` or `~/.cursor/mcp.json`), and you fully restarted Cursor.
-- **401 Unauthorized:** Your access token may have expired (tokens are valid about 10 hours). Generate a new one and update your config. See [Obtaining a token](../appcircle_access_token.md) and the [Troubleshooting section](../appcircle_access_token.md#troubleshooting) there.
+- **401 Unauthorized:** Your access token may have expired (tokens are valid about 24 hours). Generate a new one and update your config. See [Obtaining a token](../appcircle_access_token.md) and the [Troubleshooting section](../appcircle_access_token.md#troubleshooting) there.
 - **Streamable-http / Docker:** Confirm the server is running (`http://localhost:8000/health`) and that the client is sending `Authorization: Bearer <your_token>`.
 - **Settings UI:** You can also add or edit MCP servers via **Cursor → Settings → Tools & MCP**; restart Cursor after changes.
 - **Server-side logging (LOG_LEVEL):** To get more verbose logs from the Appcircle MCP server, set the `LOG_LEVEL` environment variable to `DEBUG`. In your config (stdio), add it to the `env` block:

@@ -265,7 +265,7 @@ docker run -d --name appcircle-mcp -p 8000:8000 -e APPCIRCLE_EXCLUDED_TOOLSETS=r
 
 - **Server not showing in Antigravity:** Ensure the JSON is valid (no missing commas or braces), the config file is in the correct location (`~/.gemini/antigravity/mcp_config.json` on macOS/Linux), and you saved the file. Toggle the server off and on in **Manage MCP Servers**, or restart Antigravity.
 - **"Error Calling Initialize: EOF":** This often happens when the `command` for a local server (Section 2) uses a **relative path**. Use the full absolute path from `which appcircle-mcp` (e.g. `/Users/you/appcircle-mcp/venv/bin/appcircle-mcp`).
-- **401 Unauthorized:** Your access token may have expired (tokens are valid about 10 hours). Generate a new one and update your config. See [Obtaining a token](../appcircle_access_token.md) and the [Troubleshooting section](../appcircle_access_token.md#troubleshooting) there.
+- **401 Unauthorized:** Your access token may have expired (tokens are valid about 24 hours). Generate a new one and update your config. See [Obtaining a token](../appcircle_access_token.md) and the [Troubleshooting section](../appcircle_access_token.md#troubleshooting) there.
 - **Streamable-http / Docker:** Confirm the server is running (`http://localhost:8000/health`) and that your config sends `Authorization: Bearer <your_token>` in the `--header` argument.
 - **Manage MCP Servers:** You can add or edit servers via **Agent Panel** → **"..."** → **Manage MCP Servers** → **View raw config**; save and toggle or restart after changes.
 - **Server-side logging (LOG_LEVEL):** To get more verbose logs from the Appcircle MCP server, set the `LOG_LEVEL` environment variable to `DEBUG`. In your config (stdio), add it to the `env` block:

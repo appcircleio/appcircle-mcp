@@ -258,7 +258,7 @@ docker run -d --name appcircle-mcp -p 8000:8000 -e APPCIRCLE_EXCLUDED_TOOLSETS=r
 ## Troubleshooting
 
 - **Server not showing in Claude:** Ensure the JSON is valid and you fully restarted Claude Desktop.
-- **401 Unauthorized:** Your access token may have expired (tokens are valid about 10 hours). Generate a new one and update your config or auth. See [Obtaining a token](../appcircle_access_token.md) and the [Troubleshooting section](../appcircle_access_token.md#troubleshooting) there.
+- **401 Unauthorized:** Your access token may have expired (tokens are valid about 24 hours). Generate a new one and update your config or auth. See [Obtaining a token](../appcircle_access_token.md) and the [Troubleshooting section](../appcircle_access_token.md#troubleshooting) there.
 - **Streamable-http / Docker:** Confirm the server is running (`http://localhost:8000/health`) and that the client is sending `Authorization: Bearer <your_token>`.
 - **Debug mode and logs:** To see more detail from MCP and Claude Desktop, enable debug logging: **Claude Desktop → Settings → Developer** and turn on **Debug mode**. To open the log file: **Claude Desktop → Developer → View logs** (or **Open log file**). Check the logs for connection errors, missing tokens, or server startup failures.
 - **Server-side logging (LOG_LEVEL):** 
@@ -393,7 +393,7 @@ claude mcp add appcircle \
 ### Troubleshooting (Claude Code)
 
 - **Check server status:** Run `/mcp` inside Claude Code to see connected servers and their status.
-- **401 Unauthorized:** Your access token may have expired (tokens are valid about 10 hours). Remove and re-add the server with a new token, or update the token in `~/.claude.json`. See [Obtaining a token](../appcircle_access_token.md#troubleshooting).
+- **401 Unauthorized:** Your access token may have expired (tokens are valid about 24 hours). Remove and re-add the server with a new token, or update the token in `~/.claude.json`. See [Obtaining a token](../appcircle_access_token.md#troubleshooting).
 - **Debug logging:** Set `LOG_LEVEL=DEBUG` when adding the server to get verbose MCP server logs:
 
 ```bash
