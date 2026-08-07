@@ -108,6 +108,55 @@ class TestApiClientGet:
         with pytest.raises(Exception):
             await client.get("/build/v2/profiles")
 
+    async def test_get_returns_empty_dict_on_empty_body(self, mocked_api):
+        """GET with a genuinely empty 200 response body returns {} instead of raising."""
+        mocked_api.get("/build/v2/profiles").mock(return_value=Response(200, content=b""))
+        client = ApiClient()
+        result = await client.get("/build/v2/profiles")
+        assert result == {}
+
+
+@pytest.mark.asyncio
+class TestApiClientGetText:
+    """Tests for ApiClient.get_text (plain-text responses, e.g. build/publish logs)."""
+
+    async def test_get_text_success(self, mocked_api):
+        """get_text returns the raw response body, not parsed JSON."""
+        mocked_api.get("/build/v2/commits/c1/builds/b1/logs").mock(
+            return_value=Response(200, text="line one\nline two")
+        )
+        client = ApiClient()
+        result = await client.get_text("/build/v2/commits/c1/builds/b1/logs")
+        assert result == "line one\nline two"
+
+    async def test_get_text_with_params(self, mocked_api):
+        """get_text forwards query params to the API."""
+        mocked_api.get("/build/v2/commits/c1/builds/b1/logs").mock(
+            return_value=Response(200, text="")
+        )
+        client = ApiClient()
+        await client.get_text("/build/v2/commits/c1/builds/b1/logs", params={"step": "1"})
+        call = mocked_api.calls.last
+        assert call.request.url.params["step"] == "1"
+
+    async def test_get_text_raises_on_4xx(self, mocked_api):
+        """get_text raises HTTPStatusError when API returns 4xx."""
+        mocked_api.get("/build/v2/commits/c1/builds/b1/logs").mock(
+            return_value=Response(404, text="Not found")
+        )
+        client = ApiClient()
+        with pytest.raises(Exception):  # httpx.HTTPStatusError
+            await client.get_text("/build/v2/commits/c1/builds/b1/logs")
+
+    async def test_get_text_raises_on_5xx(self, mocked_api):
+        """get_text raises HTTPStatusError when API returns 5xx."""
+        mocked_api.get("/build/v2/commits/c1/builds/b1/logs").mock(
+            return_value=Response(500, text="Internal error")
+        )
+        client = ApiClient()
+        with pytest.raises(Exception):
+            await client.get_text("/build/v2/commits/c1/builds/b1/logs")
+
 
 @pytest.mark.asyncio
 class TestApiClientPost:
@@ -153,6 +202,23 @@ class TestApiClientPost:
         with pytest.raises(Exception):
             await client.post("/build/v2/profiles", json_data={"x": 1})
 
+    async def test_post_with_params(self, mocked_api):
+        """POST forwards query params to the API."""
+        mocked_api.post("/build/v3/commits/c1/build").mock(
+            return_value=Response(200, json={"taskId": "t1"})
+        )
+        client = ApiClient()
+        await client.post("/build/v3/commits/c1/build", params={"configurationId": "cfg-1"})
+        call = mocked_api.calls.last
+        assert call.request.url.params["configurationId"] == "cfg-1"
+
+    async def test_post_returns_empty_dict_on_empty_body(self, mocked_api):
+        """POST with a genuinely empty 200 response body returns {} instead of raising."""
+        mocked_api.post("/build/v3/queue/t1/cancel").mock(return_value=Response(200, content=b""))
+        client = ApiClient()
+        result = await client.post("/build/v3/queue/t1/cancel")
+        assert result == {}
+
 
 @pytest.mark.asyncio
 class TestApiClientPatch:
@@ -185,6 +251,13 @@ class TestApiClientPatch:
         client = ApiClient()
         with pytest.raises(Exception):
             await client.patch("/build/v2/profiles/999", json_data={})
+
+    async def test_patch_returns_empty_dict_on_empty_body(self, mocked_api):
+        """PATCH with a genuinely empty 200 response body returns {} instead of raising."""
+        mocked_api.patch("/build/v2/profiles/123").mock(return_value=Response(200, content=b""))
+        client = ApiClient()
+        result = await client.patch("/build/v2/profiles/123", json_data={})
+        assert result == {}
 
 
 @pytest.mark.asyncio
@@ -219,6 +292,27 @@ class TestApiClientPut:
         with pytest.raises(Exception):
             await client.put("/build/v2/profiles/123", json_data={})
 
+    async def test_put_with_params(self, mocked_api):
+        """PUT forwards query params to the API."""
+        mocked_api.put("/build/v2/profiles/p1/workflow/w1").mock(
+            return_value=Response(202, json={"taskId": "t1"})
+        )
+        client = ApiClient()
+        await client.put(
+            "/build/v2/profiles/p1/workflow/w1",
+            json_data={},
+            params={"branchName": "main"},
+        )
+        call = mocked_api.calls.last
+        assert call.request.url.params["branchName"] == "main"
+
+    async def test_put_returns_empty_dict_on_empty_body(self, mocked_api):
+        """PUT with a genuinely empty 200 response body returns {} instead of raising."""
+        mocked_api.put("/build/v2/profiles/123").mock(return_value=Response(200, content=b""))
+        client = ApiClient()
+        result = await client.put("/build/v2/profiles/123", json_data={})
+        assert result == {}
+
 
 @pytest.mark.asyncio
 class TestApiClientDelete:
@@ -241,3 +335,10 @@ class TestApiClientDelete:
         client = ApiClient()
         with pytest.raises(Exception):
             await client.delete("/build/v2/profiles/999")
+
+    async def test_delete_returns_empty_dict_on_empty_body(self, mocked_api):
+        """DELETE with a genuinely empty 200 response body returns {} instead of raising."""
+        mocked_api.delete("/build/v2/profiles/123").mock(return_value=Response(200, content=b""))
+        client = ApiClient()
+        result = await client.delete("/build/v2/profiles/123")
+        assert result == {}

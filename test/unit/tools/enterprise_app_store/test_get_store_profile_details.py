@@ -3,7 +3,10 @@
 import pytest
 from httpx import Response
 
-from src.tools.enterprise_app_store.get_store_profile_details import get_store_profile_details
+from src.tools.enterprise_app_store.get_store_profile_details import (
+    APP_VERSION_PUBLISH_TYPES,
+    get_store_profile_details,
+)
 
 PROFILE_ID = "test-store-profile-uuid"
 SAMPLE_RESPONSE = {
@@ -99,6 +102,11 @@ async def test_get_store_profile_details_excluded_fields(mocked_api):
     assert "signedCertThumbPrint" not in result["data"]
     assert len(result["data"]["appVersions"]) == 1
     assert "signedCertThumbPrint" not in result["data"]["appVersions"][0]
+
+
+def test_app_version_publish_types_mapping():
+    """APP_VERSION_PUBLISH_TYPES documents the publishType int enum (0=None, 1=Beta, 2=Live)."""
+    assert APP_VERSION_PUBLISH_TYPES == {0: "None", 1: "Beta", 2: "Live"}
 
 
 @pytest.mark.asyncio

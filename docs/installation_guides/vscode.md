@@ -250,7 +250,7 @@ docker run -d --name appcircle-mcp -p 8000:8000 -e APPCIRCLE_EXCLUDED_TOOLSETS=r
 ## Troubleshooting
 
 - **Server not showing in VS Code:** Ensure the JSON is valid, the config file is in the right place (user `mcp.json` or `.vscode/mcp.json`), and each server has the correct `"type"` (`"stdio"` or `"http"`). Use **MCP: List Servers** to start or restart the server.
-- **401 Unauthorized:** Your access token may have expired (tokens are valid about 10 hours). Generate a new one and update your config. See [Obtaining a token](../appcircle_access_token.md) and the [Troubleshooting section](../appcircle_access_token.md#troubleshooting) there.
+- **401 Unauthorized:** Your access token may have expired (tokens are valid about 24 hours). Generate a new one and update your config. See [Obtaining a token](../appcircle_access_token.md) and the [Troubleshooting section](../appcircle_access_token.md#troubleshooting) there.
 - **Streamable-http / Docker:** Confirm the server is running (`http://localhost:8000/health`) and that your config includes the `Authorization` header with a valid token.
 - **View logs:** Run **MCP: List Servers**, select the Appcircle server, and choose **Show Output** to view server logs.
 - **Trust:** If you need to re-confirm trust, run **MCP: Reset Trust** from the Command Palette.

@@ -172,6 +172,43 @@ async def test_get_distribution_profiles_response_not_list_or_dict(mocked_api):
 
 
 @pytest.mark.asyncio
+async def test_get_distribution_profiles_filters_and_sort(mocked_api):
+    """platform, authentication_type, sort, sort_direction are passed to the API and reflected in meta."""
+    mocked_api.get("/distribution/v2/profiles").mock(
+        return_value=Response(200, json=SAMPLE_PROFILES)
+    )
+
+    result = await get_distribution_profiles(
+        platform=[1, 2],
+        authentication_type=[1],
+        sort=2,
+        sort_direction=2,
+    )
+
+    assert result["success"] is True
+    assert result["meta"]["platform"] == [1, 2]
+    assert result["meta"]["authentication_type"] == [1]
+    assert result["meta"]["sort"] == 2
+    assert result["meta"]["sort_direction"] == 2
+    params = mocked_api.calls.last.request.url.params
+    assert params.get_list("platform") == ["1", "2"]
+    assert params.get_list("authenticationType") == ["1"]
+    assert params.get("sort") == "2"
+    assert params.get("sortDirection") == "2"
+
+
+@pytest.mark.asyncio
+async def test_get_distribution_profiles_invalid_authentication_type_returns_validation_error(mocked_api):
+    """An unknown authentication_type code returns a validation_error without calling the API."""
+    result = await get_distribution_profiles(authentication_type=[99])
+
+    assert result["success"] is False
+    assert result["error"]["tool"] == "get_distribution_profiles"
+    assert result["error"]["type"] == "validation_error"
+    assert not mocked_api.calls
+
+
+@pytest.mark.asyncio
 async def test_get_distribution_profiles_error_returns_unified_envelope(mocked_api):
     """When API returns 500, tool returns standard error envelope."""
     mocked_api.get("/distribution/v2/profiles").mock(

@@ -251,7 +251,7 @@ docker run -d --name appcircle-mcp -p 8000:8000 -e APPCIRCLE_EXCLUDED_TOOLSETS=r
 
 - **Server not showing in Windsurf:** Ensure the JSON is valid (no missing commas or braces), the config file is in the correct location (`~/.codeium/windsurf/mcp_config.json` on macOS/Linux), and you saved the file. Restart the server via **Manage MCPs** or restart Windsurf.
 - **Startup / init errors:** When using a local binary (Section 2), use the full **absolute path** from `which appcircle-mcp` for the `command`; relative paths often cause initialization failures.
-- **401 Unauthorized:** Your access token may have expired (tokens are valid about 10 hours). Generate a new one and update your config. See [Obtaining a token](../appcircle_access_token.md) and the [Troubleshooting section](../appcircle_access_token.md#troubleshooting) there.
+- **401 Unauthorized:** Your access token may have expired (tokens are valid about 24 hours). Generate a new one and update your config. See [Obtaining a token](../appcircle_access_token.md) and the [Troubleshooting section](../appcircle_access_token.md#troubleshooting) there.
 - **Streamable-http / Docker:** Confirm the server is running (`http://localhost:8000/health`) and that your config includes the `Authorization` header with a valid token. Use the latest version of Windsurf for native HTTP support.
 - **Manage MCPs:** You can add or edit servers via **Windsurf: Configure MCP Servers** or **Windsurf Settings → Manage MCPs → View raw config**; save and restart the server or Windsurf after changes.
 - **Server-side logging (LOG_LEVEL):** To get more verbose logs from the Appcircle MCP server, set the `LOG_LEVEL` environment variable to `DEBUG`. In your config (stdio), add it to the `env` block:

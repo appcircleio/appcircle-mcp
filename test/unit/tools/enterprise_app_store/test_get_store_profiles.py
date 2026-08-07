@@ -75,6 +75,46 @@ async def test_get_store_profiles_size_cap(mocked_api):
 
 
 @pytest.mark.asyncio
+async def test_get_store_profiles_filters_and_sort(mocked_api):
+    """platform_type, publish_type, visibility, sort, sort_direction are passed to the API and reflected in meta."""
+    mocked_api.get("/store/v2/profiles").mock(
+        return_value=Response(200, json=SAMPLE_PROFILES)
+    )
+
+    result = await get_store_profiles(
+        platform_type=[1],
+        publish_type=[2],
+        visibility=False,
+        sort=3,
+        sort_direction=2,
+    )
+
+    assert result["success"] is True
+    assert result["meta"]["platform_type"] == [1]
+    assert result["meta"]["publish_type"] == [2]
+    assert result["meta"]["visibility"] is False
+    assert result["meta"]["sort"] == 3
+    assert result["meta"]["sort_direction"] == 2
+    params = mocked_api.calls.last.request.url.params
+    assert params.get_list("platformType") == ["1"]
+    assert params.get_list("publishType") == ["2"]
+    assert params.get("visibility") == "false"
+    assert params.get("sort") == "3"
+    assert params.get("sortDirection") == "2"
+
+
+@pytest.mark.asyncio
+async def test_get_store_profiles_invalid_publish_type_returns_validation_error(mocked_api):
+    """An unknown publish_type code returns a validation_error without calling the API."""
+    result = await get_store_profiles(publish_type=[99])
+
+    assert result["success"] is False
+    assert result["error"]["tool"] == "get_store_profiles"
+    assert result["error"]["type"] == "validation_error"
+    assert not mocked_api.calls
+
+
+@pytest.mark.asyncio
 async def test_get_store_profiles_error_returns_unified_envelope(mocked_api):
     """When API returns 500, tool returns standard error envelope."""
     mocked_api.get("/store/v2/profiles").mock(

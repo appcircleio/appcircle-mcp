@@ -223,7 +223,7 @@ Authorization = "Bearer your_access_token_here"
 ## Troubleshooting
 
 - **Server not showing in Codex:** Ensure the TOML is valid, the config file is in the right place (`~/.codex/config.toml` or `.codex/config.toml`), and you fully restarted Codex.
-- **401 Unauthorized:** Your access token may have expired (tokens are valid about 10 hours). Generate a new one and update your config or environment. See [Obtaining a token](../appcircle_access_token.md) and the [Troubleshooting section](../appcircle_access_token.md#troubleshooting) there.
+- **401 Unauthorized:** Your access token may have expired (tokens are valid about 24 hours). Generate a new one and update your config or environment. See [Obtaining a token](../appcircle_access_token.md) and the [Troubleshooting section](../appcircle_access_token.md#troubleshooting) there.
 - **Streamable-http / Docker:** Confirm the server is running (`http://localhost:8000/health`) and that your config includes the `Authorization` header in `[mcp_servers.appcircle.http_headers]` with a valid token.
 - **MCP settings:** You can also open the config via **Codex → Settings → Configuration → Open config.toml**; restart Codex after changes.
 - **Server-side logging (LOG_LEVEL):** To get more verbose logs from the Appcircle MCP server, set the `LOG_LEVEL` environment variable to `DEBUG`. In your config (stdio), add it to the env table:
@@ -330,7 +330,7 @@ In the Codex TUI, use `/mcp` to see active MCP servers and their status.
 ### Troubleshooting (Codex CLI)
 
 - **Check server status:** Run `codex mcp list` or `/mcp` in the Codex TUI to see configured servers and their status.
-- **401 Unauthorized:** Your access token may have expired (tokens are valid about 10 hours). Remove and re-add the server with a new token: `codex mcp remove appcircle` then `codex mcp add appcircle ...` with the new token. See [Obtaining a token](../appcircle_access_token.md#troubleshooting).
+- **401 Unauthorized:** Your access token may have expired (tokens are valid about 24 hours). Remove and re-add the server with a new token: `codex mcp remove appcircle` then `codex mcp add appcircle ...` with the new token. See [Obtaining a token](../appcircle_access_token.md#troubleshooting).
 - **Debug logging:** Set `LOG_LEVEL=DEBUG` when adding the server to get verbose MCP server logs (stdio only):
 
 ```bash

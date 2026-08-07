@@ -137,10 +137,23 @@ Then start the server as usual (e.g. `appcircle-mcp` or with your chosen transpo
 
 ---
 
+## Renewing an Expired Token
+
+Access tokens are valid for **about 24 hours** (see [Troubleshooting](#401-unauthorized-after-some-time)). Once a token expires, exchange your Personal Access Key or API key for a **new** access token, the same way you got the first one. The key/secret itself does not expire on this schedule: Personal Access Keys are valid for 1 year, and API Keys expire on their own configured expiry date (up to 1 year). You can repeat the exchange as many times as needed until the key itself expires.
+
+1. **Get a new access token:**
+   - If you used a **Personal Access Key**, repeat [Step 2: Exchange the Key for an Access Token](#step-2-exchange-the-key-for-an-access-token) with the same key.
+   - If you used an **API Key**, repeat [Step 2: Retrieve an Access Token Using the API Key](#step-2-retrieve-an-access-token-using-the-api-key) with the same key name/secret.
+2. **Copy the new `access_token`** from the response.
+3. **Update `APPCIRCLE_ACCESS_TOKEN`** with the new value, in whichever place you set it for your setup (shell environment, `.env`, or your MCP client's configuration; see the client-specific [installation guides](installation_guides/claude_applications.md) for exact config locations).
+4. **Restart the MCP server** (and/or reconnect your MCP client) so it picks up the new token. The server reads `APPCIRCLE_ACCESS_TOKEN` at startup and won't see an updated value until it's restarted.
+
+---
+
 ## Troubleshooting
 
 ### 401 Unauthorized after some time
 
-Access tokens obtained via **Personal Access Key** or **API Keys** are valid for **about 10 hours**. After that, they expire and API calls will return **401 Unauthorized**.
+Access tokens obtained via **Personal Access Key** or **API Keys** are valid for **about 24 hours**. After that, they expire and API calls will return **401 Unauthorized**.
 
-**What to do:** Generate a new access token using the same steps above (exchange your Personal Access Key or API key for a new token), then update `APPCIRCLE_ACCESS_TOKEN` in your environment or client configuration and restart the MCP server if needed.
+**What to do:** See [Renewing an Expired Token](#renewing-an-expired-token) above.

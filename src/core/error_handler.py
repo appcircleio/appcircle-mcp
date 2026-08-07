@@ -74,3 +74,23 @@ def handle_api_error(error: Exception, tool_name: str) -> Dict[str, Any]:
         message="An unexpected error occurred",
         details=str(error),
     )
+
+
+INVALID_STATE_STATUS_CODES = frozenset({409, 422})
+
+
+def handle_write_api_error(error: Exception, tool_name: str) -> Dict[str, Any]:
+    """
+    Map an exception to the standard error envelope, for write/action tools.
+
+    Same as handle_api_error, except HTTP 409/422 (the API's way of signaling
+    the target resource is in a state that doesn't allow this action, e.g. a
+    build already in progress) are remapped from type "http_error" to
+    "invalid_state" so callers can distinguish "retry won't help without a
+    state change" from a generic HTTP failure.
+    """
+    result = handle_api_error(error, tool_name)
+    error_detail = result.get("error", {})
+    if error_detail.get("type") == "http_error" and error_detail.get("status_code") in INVALID_STATE_STATUS_CODES:
+        error_detail["type"] = "invalid_state"
+    return result

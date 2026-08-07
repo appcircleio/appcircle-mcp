@@ -13,6 +13,12 @@ TOOL_NAME = "get_store_profile_details"
 # Key to exclude from profile and app versions (security)
 EXCLUDED_KEY = "signedCertThumbPrint"
 
+# Meaning of each app version's publishType field (int, per the API's own enum
+# naming, confirmed against the /app-versions/publish-types/{publishtype} Swagger
+# endpoint's path parameter values -- that endpoint itself could not be reached
+# via a real call, so this mapping is documentation only, not used for filtering).
+APP_VERSION_PUBLISH_TYPES: Dict[int, str] = {0: "None", 1: "Beta", 2: "Live"}
+
 
 def _trim_profile(profile: Dict[str, Any]) -> Dict[str, Any]:
     """Return a copy of the profile without signedCertThumbPrint; also trim from each app version."""
@@ -56,7 +62,9 @@ async def get_store_profile_details(
 
     Returns the enterprise app store profile with the given ID, including name,
     configuration, and a paginated list of app versions. Use page and size to paginate app versions.
-    The returned profile and each app version exclude signedCertThumbPrint.
+    The returned profile and each app version exclude signedCertThumbPrint. Each app
+    version's publishType field is an int: see APP_VERSION_PUBLISH_TYPES for the
+    mapping (0=None, 1=Beta, 2=Live).
 
     Args:
         profile_id: The enterprise app store profile ID (e.g. UUID).

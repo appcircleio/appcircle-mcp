@@ -45,6 +45,7 @@ Client-specific setup guides:
 | `APPCIRCLE_MCP_PORT` | No (streamable-http only) | Bind port for the HTTP server (default: `8000`). Overridden by `--port` if provided. Useful for on-prem or Docker when a specific port is required. |
 | `LOG_LEVEL` | No | Logging level, e.g. `DEBUG`, `INFO` (default: `INFO`). |
 | `APPCIRCLE_EXCLUDED_TOOLSETS` | No | Comma-separated toolsets to exclude (e.g. `build_module,report`). See [Toolsets](#toolsets) below. |
+| `AC_MCP_ENABLE_WRITE_TOOLS` | No | Write/action tools (e.g. `trigger_build`, `cancel_build`) are registered by default. Set to `false`/`0`/`no`/`off` to opt out and not register them at all (not just disable at call time). |
 
 Set these in your shell or in your MCP client’s configuration.
 
@@ -90,11 +91,16 @@ Tools are exposed via MCP `tools/list`. Reference below lists all tools by tools
 
 <summary>Build</summary>
 
-- **get_build_profiles** - Get build profiles for the current organization (paginated). Optionally filter by profile name.
+- **get_build_profiles** - Get build profiles for the current organization (paginated). Optionally filter by profile name, platform, last build status, and repository source. Optionally sort.
   - **Access level:** read
   - `page`: Page number (1-based). Default: 1. (number, optional)
   - `size`: Page size (1-100). Default: 25. Values above 100 are capped at 100. (number, optional)
-  - `search`: Optional search term to filter profiles by name (case-insensitive partial match). (string, optional)
+  - `search`: Optional search term to filter profiles (case-insensitive partial match on profile name; the API's search may also match other profile fields). (string, optional)
+  - `platform`: Optional list of platform codes to filter by. Allowed values: 1=iOS, 2=Android. (list of numbers, optional)
+  - `last_build_status`: Optional list of last build status codes to filter by. Allowed values: 0=Success, 1=Failed, 2=Canceled, 3=Timeout, 90=Waiting, 91=Running. (list of numbers, optional)
+  - `repository_source`: Optional list of repository source codes to filter by. Allowed values: 1=GitHub, 2=Bitbucket, 3=GitLab, 4=Azure DevOps, 6=Public Repository, 7=Private Repository, 8=SSH. (list of numbers, optional)
+  - `sort`: Optional sort field code. Allowed values: 1=Profile Name, 2=Create Date, 3=Last Build Date. (number, optional)
+  - `sort_direction`: Optional sort direction code. Allowed values: 1=ASC, 2=DESC. (number, optional)
 
 - **get_build_profile_details** - Get a single build profile by ID, optionally including its build configurations.
   - **Access level:** read
@@ -126,6 +132,40 @@ Tools are exposed via MCP `tools/list`. Reference below lists all tools by tools
   - `commit_id`: The commit ID (UUID). (string, optional)
   - `commit_hash`: The commit hash (git SHA). (string, optional)
 
+- **get_last_commit** - Get the most recent commit on a build branch.
+  - **Access level:** read
+  - `branch_id`: The branch ID (e.g. UUID). (string, required)
+
+- **get_build_status** - Get the status of a build (e.g. 0=Success, 1=Failed, 2=Canceled, 3=Timeout, 90=Waiting, 91=Running, 92=Completing, 99=Unknown).
+  - **Access level:** read
+  - `commit_id`: The commit ID (UUID). (string, required)
+  - `build_id`: The build ID (UUID). (string, required)
+
+- **get_build_logs** - Get the logs for a build, optionally scoped to a single step. Defaults to a tail-truncated view to avoid flooding the model's context.
+  - **Access level:** read
+  - `commit_id`: The commit ID (UUID). (string, required)
+  - `build_id`: The build ID (UUID). (string, required)
+  - `step`: Optional exact step name (case-insensitive) to scope output to one step's log block. (string, optional)
+  - `full_log`: If true, return the entire log instead of the default tail. Still capped at 256 KB. Default: false. (boolean, optional)
+  - `tail_lines`: Number of lines to keep from the end when not using full_log. Default: 200, max 1000. (number, optional)
+  - `grep`: Case-insensitive substring filter applied to lines before truncation. (string, optional)
+
+- **get_variable_groups** - Get all build environment variable groups for the organization, including each group's variables (key, value, isSecret, isFile). Secret values are already redacted by the API.
+  - **Access level:** read
+  - Takes no parameters.
+
+- **trigger_build** - **SIDE EFFECT: starts a new real build run** (queues an actual build, consuming build minutes/credits) either on a branch (latest synced commit) or for one specific commit. Registered by default; set `AC_MCP_ENABLE_WRITE_TOOLS=false` to opt out.
+  - **Access level:** write
+  - `profile_id`: The build profile ID (e.g. UUID). Required in branch mode (commit_id not given); unused in commit mode. (string, optional)
+  - `workflow_id`: The workflow ID (e.g. UUID). Required in branch mode. Optional in commit mode (uses the last-used/default workflow if omitted). (string, optional)
+  - `branch_name`: Optional branch name (e.g. "main"). Branch mode only; falls back to the profile's default branch if omitted. Must not be given together with commit_id. (string, optional)
+  - `commit_id`: The commit's own ID (not its git hash) to trigger a build for a specific commit instead of the latest one on a branch. Must not be given together with branch_name. (string, optional)
+  - `configuration_id`: Optional build configuration ID (e.g. UUID) to use instead of the default. (string, optional)
+
+- **cancel_build** - **SIDE EFFECT: cancels a queued or running build** (real, in-progress work is stopped; cannot be resumed). Registered by default; set `AC_MCP_ENABLE_WRITE_TOOLS=false` to opt out.
+  - **Access level:** write
+  - `task_id`: The build's task ID (the "taskId" field returned by trigger_build). (string, required)
+
 </details>
 
 <details>
@@ -154,11 +194,15 @@ Tools are exposed via MCP `tools/list`. Reference below lists all tools by tools
 
 <summary>Testing Distribution</summary>
 
-- **get_distribution_profiles** - Get testing distribution profiles for the current organization (paginated). Optionally filter by profile name.
+- **get_distribution_profiles** - Get testing distribution profiles for the current organization (paginated). Optionally filter by profile name, platform, and authentication type. Optionally sort.
   - **Access level:** read
   - `page`: Page number (1-based). Default: 1. (number, optional)
   - `size`: Page size (1-100). Default: 25, max 100. (number, optional)
-  - `search`: Optional search term to filter profiles by name. (string, optional)
+  - `search`: Optional search term to filter profiles (case-insensitive partial match on profile name; the API's search may also match other profile fields). (string, optional)
+  - `platform`: Optional list of platform codes to filter by. Allowed values: 1=iOS, 2=Android. (list of numbers, optional)
+  - `authentication_type`: Optional list of authentication type codes to filter by. Allowed values: 1=None, 3=Static Login, 4=LDAP, 5=SSO. (list of numbers, optional)
+  - `sort`: Optional sort field code. Allowed values: 1=Profile Name, 2=Create Date, 3=Last Upload Date. (number, optional)
+  - `sort_direction`: Optional sort direction code. Allowed values: 1=ASC, 2=DESC. (number, optional)
 
 - **get_distribution_profile_details** - Get a single testing distribution profile by ID (with optional app versions pagination).
   - **Access level:** read
@@ -166,18 +210,40 @@ Tools are exposed via MCP `tools/list`. Reference below lists all tools by tools
   - `page`: Page number for app versions (1-based). Default: 1. (number, optional)
   - `size`: Page size for app versions (1-100). Default: 25, max 100. (number, optional)
 
+- **get_testing_groups** - Get all testing distribution groups for the organization, including each group's member tester emails and group type.
+  - **Access level:** read
+  - Takes no parameters.
+
+- **update_app_version_release_notes** - **SIDE EFFECT: overwrites the release notes ("message") shown to testers** for a distribution app version. Returns the updated app version object (excludes certThumbPrints). Registered by default; set `AC_MCP_ENABLE_WRITE_TOOLS=false` to opt out.
+  - **Access level:** write
+  - `profile_id`: The distribution profile ID (e.g. UUID). (string, required)
+  - `app_version_id`: The app version ID (e.g. UUID). (string, required)
+  - `message`: The new release notes text. (string, required)
+
+- **send_app_version_to_testers** - **SIDE EFFECT: sends a real notification** to testers/a testing group, dispatching a distribution task for a specific app version. Registered by default; set `AC_MCP_ENABLE_WRITE_TOOLS=false` to opt out.
+  - **Access level:** write
+  - `profile_id`: The distribution profile ID (e.g. UUID). (string, required)
+  - `app_version_id`: The app version ID (e.g. UUID). (string, required)
+  - `message`: The notification message shown to testers. (string, required)
+  - `testers`: List of testers to send to. Each entry is either a tester's email address or a testing group ID (the "id" field from get_testing_groups). (list of strings, required)
+
 </details>
 
 <details>
 
 <summary>Publish to Stores</summary>
 
-- **get_publish_profiles** - Get publish profiles for the current organization for a given platform type (paginated). Optionally filter by flow status.
+- **get_publish_profiles** - Get publish profiles for the current organization for a given platform type (paginated). Optionally filter by flow status, target marketplace, release-candidate binary presence, and store status. Optionally sort.
   - **Access level:** read
   - `platform_type`: Platform type of publish profiles ("ios" or "android"). (string, required)
   - `page`: Page number (1-based). Default: 1. (number, optional)
   - `size`: Page size (1-100). Default: 25, max 100. (number, optional)
   - `flow_status`: Optional flow status code to filter by (e.g. 0=Success, 1=Failed, 91=Running). (number, optional)
+  - `market_place_type`: Optional list of target marketplace codes to filter by. Allowed values depend on platform_type -- ios: 0=Not Available, 1=App Store Connect, 4=Intune; android: 0=Not Available, 2=Google Play, 3=AppGallery, 4=Intune. (list of numbers, optional)
+  - `has_rc_binary`: Optional filter for whether the profile has a release-candidate binary. (boolean, optional)
+  - `store_status`: Optional list of store status codes to filter by. Allowed values depend on platform_type (many more codes for ios than android, e.g. ios: "IN_REVIEW", "READY_FOR_SALE", "REJECTED"; android: "NOT_AVAILABLE", "DRAFT", "IN_PROGRESS", "HALTED", "COMPLETED"). (list of strings, optional)
+  - `sort`: Optional sort field code. Allowed values: 1=Profile Name, 2=Create Date. (number, optional)
+  - `sort_direction`: Optional sort direction code. Allowed values: 1=ASC, 2=DESC. (number, optional)
 
 - **get_publish_profile_details** - Get a single publish profile by platform type and ID (with optional app versions pagination).
   - **Access level:** read
@@ -186,22 +252,89 @@ Tools are exposed via MCP `tools/list`. Reference below lists all tools by tools
   - `page`: Page number for app versions (1-based). Default: 1. (number, optional)
   - `size`: Page size for app versions (1-100). Default: 25, max 100. (number, optional)
 
+- **get_app_version_metadata** - Get store listing metadata for a single app version (app review information, localizations, release information, app version information). appReviewInformation.demoPassword is excluded.
+  - **Access level:** read
+  - `platform_type`: Platform type ("ios" or "android"). (string, required)
+  - `profile_id`: The publish profile ID (e.g. UUID). (string, required)
+  - `app_version_id`: The app version ID (e.g. UUID). (string, required)
+
+- **get_metadata_locales** - Get the available store metadata locales for a single app version (name, code, localized, isPrimary).
+  - **Access level:** read
+  - `platform_type`: Platform type ("ios" or "android"). (string, required)
+  - `profile_id`: The publish profile ID (e.g. UUID). (string, required)
+  - `app_version_id`: The app version ID (e.g. UUID). (string, required)
+
+- **get_intune_metadata** - Get Microsoft Intune app metadata for a single app version (display name, publisher, bundle ID, version, publishing state, applicable device types, categories, etc.).
+  - **Access level:** read
+  - `platform_type`: Platform type ("ios" or "android"). (string, required)
+  - `profile_id`: The publish profile ID (e.g. UUID). (string, required)
+  - `app_version_id`: The app version ID (e.g. UUID). (string, required)
+
+- **get_publish_metadata_lock_status** - Get whether a publish profile's store metadata is locked for editing.
+  - **Access level:** read
+  - `platform_type`: Platform type ("ios" or "android"). (string, required)
+  - `profile_id`: The publish profile ID (e.g. UUID). (string, required)
+
+- **get_publish_details** - Get the publish flow run details for a single app version (status, timing, ordered steps with run history/artifacts/log resource IDs).
+  - **Access level:** read
+  - `platform_type`: Platform type ("ios" or "android"). (string, required)
+  - `profile_id`: The publish profile ID (e.g. UUID). (string, required)
+  - `app_version_id`: The app version ID (e.g. UUID). (string, required)
+
+- **get_publish_step_logs** - Get the logs for a publish flow run, optionally scoped to a single step. Defaults to a tail-truncated view to avoid flooding the model's context.
+  - **Access level:** read
+  - `platform_type`: Platform type ("ios" or "android"). (string, required)
+  - `profile_id`: The publish profile ID (e.g. UUID). (string, required)
+  - `publish_id`: The publish flow run ID (the "id" field from get_publish_details). (string, required)
+  - `step_id`: The step ID (a step's "id" field from get_publish_details' steps list). (string, required)
+  - `step`: Optional exact step name (case-insensitive) to scope output to one step's log block. (string, optional)
+  - `full_log`: If true, return the entire log instead of the default tail. Still capped at 256 KB. Default: false. (boolean, optional)
+  - `tail_lines`: Number of lines to keep from the end when not using full_log. Default: 200, max 1000. (number, optional)
+  - `grep`: Case-insensitive substring filter applied to lines before truncation. (string, optional)
+
+- **get_publish_flows** - Get the publish flows configured for a publish profile (name, ID, full flow document YAML).
+  - **Access level:** read
+  - `platform_type`: Platform type ("ios" or "android"). (string, required)
+  - `profile_id`: The publish profile ID (e.g. UUID). (string, required)
+
+- **start_publish** - **SIDE EFFECT: starts a publish flow run** (or restarts it from a specific step) -- real publishing work (e.g. uploading to the App Store/Play Store/Intune). Registered by default; set `AC_MCP_ENABLE_WRITE_TOOLS=false` to opt out.
+  - **Access level:** write
+  - `platform_type`: Platform type ("ios" or "android"). (string, required)
+  - `profile_id`: The publish profile ID (e.g. UUID). (string, required)
+  - `publish_id`: The publish flow run ID (the "id" field from get_publish_details). (string, required)
+  - `step_id`: Optional step ID to start from that step instead of the beginning of the flow. (string, optional)
+  - `organization_pool_id`: Optional organization pool ID (e.g. UUID) to run on. (string, optional)
+
+- **stop_publish** - **SIDE EFFECT: cancels a running publish flow run** (real, in-progress work is stopped; cannot be resumed). Registered by default; set `AC_MCP_ENABLE_WRITE_TOOLS=false` to opt out.
+  - **Access level:** write
+  - `platform_type`: Platform type ("ios" or "android"). (string, required)
+  - `profile_id`: The publish profile ID (e.g. UUID). (string, required)
+  - `publish_id`: The publish flow run ID (the "id" field from get_publish_details). (string, required)
+  - `step_id`: Optional step ID. (string, optional)
+  - `organization_pool_id`: Optional organization pool ID (e.g. UUID). (string, optional)
+
 </details>
 
 <details>
 
 <summary>Enterprise App Store</summary>
 
-- **get_store_profiles** - Get enterprise app store profiles for the current organization (paginated).
+- **get_store_profiles** - Get enterprise app store profiles for the current organization (paginated). Does not support search, but can filter by platform, publish type, and visibility. Optionally sort.
   - **Access level:** read
   - `page`: Page number (1-based). Default: 1. (number, optional)
   - `size`: Page size (1-100). Default: 25, max 100. (number, optional)
+  - `platform_type`: Optional list of platform codes to filter by. Allowed values: 1=iOS, 2=Android. (list of numbers, optional)
+  - `publish_type`: Optional list of publish type codes to filter by. Allowed values: 1=Published to Beta, 2=Published to Live. (list of numbers, optional)
+  - `visibility`: Optional filter for whether the profile is publicly listed (true=Listed, false=Unlisted). (boolean, optional)
+  - `sort`: Optional sort field code. Allowed values: 1=App Name, 2=Create Date, 3=Download Count, 4=Binary Receive Date. (number, optional)
+  - `sort_direction`: Optional sort direction code. Allowed values: 1=ASC, 2=DESC. (number, optional)
 
 - **get_store_profile_details** - Get a single enterprise app store profile by ID (with optional app versions pagination).
   - **Access level:** read
   - `profile_id`: The enterprise app store profile ID (e.g. UUID). (string, required)
   - `page`: Page number for app versions (1-based). Default: 1. (number, optional)
   - `size`: Page size for app versions (1-100). Default: 25, max 100. (number, optional)
+  - Each app version's `publishType` field is an int: 0=None, 1=Beta, 2=Live.
 
 </details>
 
@@ -217,6 +350,25 @@ Tools are exposed via MCP `tools/list`. Reference below lists all tools by tools
   - `size`: Items per page (1-100, default: 50). (number, optional)
   - `build_profile_name`: Filter by build profile name. (string, optional)
   - `organization_id`: Filter by organization UUID. (string, optional)
+
+- **get_build_queue_waiting_report** - Get the build queue waiting report, optionally filtered by date range. Paginated. Note: on this endpoint, `buildDuration` means queue wait time in minutes, not execution time (unlike get_build_history_report).
+  - **Access level:** read
+  - `start_date`: Optional start date (YYYY-MM-DD). Must be <= end_date if both are given. (string, optional)
+  - `end_date`: Optional end date (YYYY-MM-DD). (string, optional)
+  - `page`: Page number (default: 1). (number, optional)
+  - `size`: Items per page (1-100, default: 50). (number, optional)
+
+- **get_build_activity_log** - Get the build activity log (workflow/profile changes, CodePush releases, etc.), optionally filtered by date range and other parameters. Paginated.
+  - **Access level:** read
+  - `start_date`: Optional start date (YYYY-MM-DD). Must be <= end_date if both are given. (string, optional)
+  - `end_date`: Optional end date (YYYY-MM-DD). (string, optional)
+  - `page`: Page number (default: 1). (number, optional)
+  - `size`: Items per page (1-100, default: 50). (number, optional)
+  - `organization_id`: Filter by organization UUID. (string, optional)
+  - `platform`: Filter by platform type (integer code, e.g. 0=Android, 1=iOS). (number, optional)
+  - `email`: Filter by acting user's email. (string, optional)
+  - `profile_name`: Filter by build profile name. (string, optional)
+  - `action`: Filter by activity action code (integer; see `BUILD_ACTIVITY_ACTIONS` in the tool source for the full mapping). (number, optional)
 
 - **get_build_insights_report** - Get a computed Build Insights Report (Health Snapshot + Trends, Root Cause, Artifact Health, Workflow Quality, Queue Time, and Maturity Assessment analysis) over build history, aggregated server-side. Unlike get_build_history_report, this fetches every page internally and returns small pre-aggregated results instead of raw records.
   - **Access level:** read
@@ -282,6 +434,29 @@ Tools are exposed via MCP `tools/list`. Reference below lists all tools by tools
   - `organization_id`: Filter by organization UUID. (string, optional)
   - `os`: Filter by OS ("ios" or "android"). (string, optional)
   - `build_status`: Filter by build status (e.g. 0=Success, 1=Failed, 91=Running). (number, optional)
+
+- **get_signing_activity_log** - Get the signing activity log (e.g. certificate/provisioning profile/keystore expiry notices), optionally filtered by date range and other parameters. Paginated.
+  - **Access level:** read
+  - `start_date`: Optional start date (YYYY-MM-DD). Must be <= end_date if both are given. (string, optional)
+  - `end_date`: Optional end date (YYYY-MM-DD). (string, optional)
+  - `page`: Page number (default: 1). (number, optional)
+  - `size`: Items per page (1-100, default: 50). (number, optional)
+  - `organization_id`: Filter by organization UUID. (string, optional)
+  - `platform`: Filter by platform (e.g. "iOS", "Android"). (string, optional)
+  - `email`: Filter by acting user's email. (string, optional)
+  - `action`: Filter by activity action code (integer; see `SIGNING_ACTIVITY_ACTIONS` in the tool source for the full mapping). (number, optional)
+
+- **get_publish_activity_log** - Get the publish activity log (re-sign, publish flow events, etc.), optionally filtered by date range and other parameters. Paginated.
+  - **Access level:** read
+  - `start_date`: Optional start date (YYYY-MM-DD). Must be <= end_date if both are given. (string, optional)
+  - `end_date`: Optional end date (YYYY-MM-DD). (string, optional)
+  - `page`: Page number (default: 1). (number, optional)
+  - `size`: Items per page (1-100, default: 50). (number, optional)
+  - `organization_id`: Filter by organization UUID. (string, optional)
+  - `platform`: Filter by platform (e.g. "iOS", "Android"). (string, optional)
+  - `email`: Filter by acting user's email. (string, optional)
+  - `profile_name`: Filter by publish profile name. (string, optional)
+  - `action`: Filter by activity action code (integer; see `PUBLISH_ACTIVITY_ACTIONS` in the tool source for the full mapping). (number, optional)
 
 </details>
 <!-- END AUTOMATED TOOLS -->
@@ -353,6 +528,8 @@ If `APPCIRCLE_ACCESS_TOKEN` is not set, integration tests are **skipped** (no fa
 | `APPCIRCLE_TEST_ORGANIZATION_ID` | Organization UUID. Used by `test_with_organization_id` (enterprise app store app usage report). |
 | `APPCIRCLE_TEST_BRANCH_ID` | Branch UUID. Used by get_commits_by_branch and related tests when no branch can be discovered from the API. |
 | `APPCIRCLE_TEST_COMMIT_ID` | Commit UUID. Used by get_commit_details tests when no commit can be discovered from the API. |
+
+**Write/action integration tests** (`trigger_build`, `cancel_build`, etc.) are marked `integration_write` and are **opt-in on top of** `APPCIRCLE_ACCESS_TOKEN` — they mutate real data (trigger real builds, etc.), so they never run just from `pytest test/integration/ -v`. Set `APPCIRCLE_RUN_WRITE_INTEGRATION_TESTS=true` (pointing `APPCIRCLE_ACCESS_TOKEN` at a **dedicated test org**, not production) to enable them.
 
 ## Security
 

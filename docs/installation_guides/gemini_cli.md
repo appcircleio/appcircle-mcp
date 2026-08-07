@@ -245,7 +245,7 @@ docker run -d --name appcircle-mcp -p 8000:8000 -e APPCIRCLE_EXCLUDED_TOOLSETS=r
 ## Troubleshooting
 
 - **Server not showing in Gemini CLI:** Ensure the JSON is valid, the config file is in the right place (`~/.gemini/settings.json` or `.gemini/settings.json`), and you restarted Gemini CLI. Use `/mcp list` to see connected servers.
-- **401 Unauthorized:** Your access token may have expired (tokens are valid about 10 hours). Generate a new one and update your config. See [Obtaining a token](../appcircle_access_token.md) and the [Troubleshooting section](../appcircle_access_token.md#troubleshooting) there.
+- **401 Unauthorized:** Your access token may have expired (tokens are valid about 24 hours). Generate a new one and update your config. See [Obtaining a token](../appcircle_access_token.md) and the [Troubleshooting section](../appcircle_access_token.md#troubleshooting) there.
 - **Streamable-http / Docker:** Confirm the server is running (`http://localhost:8000/health`) and that your config includes the `Authorization` header with a valid token. Use **`httpUrl`** (not `url`) for HTTP in Gemini CLI.
 - **Settings:** You can view and edit settings via the `/settings` command in the CLI; restart after changes.
 - **Server-side logging (LOG_LEVEL):** To get more verbose logs from the Appcircle MCP server, set the `LOG_LEVEL` environment variable to `DEBUG`. In your config (stdio), add it to the `env` object:

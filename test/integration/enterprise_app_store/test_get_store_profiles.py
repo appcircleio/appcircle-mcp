@@ -134,6 +134,31 @@ async def test_performance_acceptable(integration_settings):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
+async def test_filters_and_sort(integration_settings):
+    """platform_type/publish_type/visibility/sort/sort_direction filters return success and are reflected in meta."""
+    response = await get_store_profiles(
+        platform_type=[1, 2],
+        sort=2,
+        sort_direction=2,
+    )
+    assert response.get("success"), response.get("error")
+    meta = response.get("meta", {})
+    assert meta.get("platform_type") == [1, 2]
+    assert meta.get("sort") == 2
+    assert meta.get("sort_direction") == 2
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_invalid_filter_returns_validation_error(integration_settings):
+    """An out-of-enum publish_type code returns a validation_error without calling the API."""
+    response = await get_store_profiles(publish_type=[99])
+    assert response.get("success") is False
+    assert response["error"]["type"] == "validation_error"
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
 async def test_data_integrity(integration_settings):
     """All profiles have required fields; IDs are unique."""
     response = await get_store_profiles(page=1, size=25)

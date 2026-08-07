@@ -3,7 +3,7 @@
 import pytest
 import httpx
 
-from src.core.error_handler import handle_api_error
+from src.core.error_handler import handle_api_error, handle_write_api_error
 
 TOOL_NAME = "test_tool"
 
@@ -98,3 +98,33 @@ def test_handle_api_error_unknown_error():
     assert result["error"]["tool"] == TOOL_NAME
     assert result["error"]["type"] == "unknown_error"
     assert result["error"]["details"] == "Something broke"
+
+
+@pytest.mark.parametrize("status_code", [409, 422])
+def test_handle_write_api_error_remaps_409_422_to_invalid_state(status_code):
+    """409/422 are remapped from http_error to invalid_state for write tools."""
+    err = _make_http_status_error(status_code, "Build already running")
+    result = handle_write_api_error(err, TOOL_NAME)
+
+    assert result["success"] is False
+    assert result["error"]["tool"] == TOOL_NAME
+    assert result["error"]["type"] == "invalid_state"
+    assert result["error"]["status_code"] == status_code
+    assert result["error"]["details"] == "Build already running"
+
+
+def test_handle_write_api_error_leaves_other_http_errors_as_http_error():
+    """Non-409/422 HTTP errors (e.g. 401, 500) stay type http_error, not remapped."""
+    err = _make_http_status_error(401, "Invalid token")
+    result = handle_write_api_error(err, TOOL_NAME)
+
+    assert result["error"]["type"] == "http_error"
+    assert result["error"]["status_code"] == 401
+
+
+def test_handle_write_api_error_leaves_non_http_errors_unchanged():
+    """Non-HTTP exceptions (validation_error, request_error, etc.) pass through unchanged."""
+    err = ValueError("bad input")
+    result = handle_write_api_error(err, TOOL_NAME)
+
+    assert result["error"]["type"] == "validation_error"

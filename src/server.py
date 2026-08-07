@@ -5,18 +5,28 @@ import sys
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+from . import __version__
 from .mcp_instance import mcp
 from .config.settings import settings, TOOLSETS
 from .core.logger import logger
 from .core.auth import set_request_token, reset_request_token
 
 VALID_TRANSPORTS = ("stdio", "streamable-http")
+TRUE_ENV_VALUES = {"1", "true", "yes", "on"}
+
+
+def _parse_bool_env(name: str, default: bool = False) -> bool:
+    """Parse a boolean environment variable (case-insensitive "1"/"true"/"yes"/"on")."""
+    value = os.getenv(name, "").strip().lower()
+    if not value:
+        return default
+    return value in TRUE_ENV_VALUES
 
 
 @mcp.custom_route("/health", methods=["GET"])
 async def health_check(request: Request) -> JSONResponse:
     """Health check endpoint for load balancers and Docker HEALTHCHECK."""
-    return JSONResponse({"status": "ok"})
+    return JSONResponse({"status": "ok", "version": __version__})
 
 
 class TokenExtractionMiddleware:
@@ -116,6 +126,9 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     if env_val:
         excluded.update(s.strip() for s in env_val.split(",") if s.strip())
     args.excluded = excluded
+
+    args.enable_write_tools = _parse_bool_env("AC_MCP_ENABLE_WRITE_TOOLS", default=True)
+
     return args
 
 
@@ -166,10 +179,13 @@ def main():
         logger.error(str(e))
         sys.exit(1)
 
+    settings.set_write_tools_enabled(args.enable_write_tools)
+
     logger.info("Appcircle MCP Server starting...")
     logger.info(f"API URL: {settings.APPCIRCLE_API_URL}")
     if settings.EXCLUDED_TOOLSETS:
         logger.info(f"Excluded toolsets: {sorted(settings.EXCLUDED_TOOLSETS)}")
+    logger.info(f"Write tools enabled: {settings.ENABLE_WRITE_TOOLS}")
     allowed_host = os.getenv("APPCIRCLE_MCP_ALLOWED_HOST", "").strip()
     if args.transport != "stdio" and allowed_host:
         logger.info(f"Allowed Host (streamable-http): {allowed_host}")
