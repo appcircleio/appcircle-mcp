@@ -23,6 +23,52 @@ def _parse_bool_env(name: str, default: bool = False) -> bool:
     return value in TRUE_ENV_VALUES
 
 
+def _bootstrap_hosted_config() -> None:
+    """Resolves this process's env through Appcircle ConfigService (BE-8827) when running as
+    Appcircle's own hosted deployment (mcp.appcircle.io) - a no-op for every local/customer
+    install. Those installs never set AC_CONFIG_SERVICE_URL and never install the optional
+    "hosted" extra (`appcircle-config-client` lives on the private Nexus registry, unreachable
+    from a customer's own `pip install .` - see docs/tasks/BE-8827/spec.md), so this function
+    returns immediately without even attempting the import.
+
+    Must run before _parse_args()/the rest of main() reads any of the env vars below, so the
+    resolved values are in os.environ by the time those functions run - they all read
+    os.getenv(...) from inside a function body, not at module-import time, so this ordering is
+    sufficient. The one exception is core.logger's LOG_LEVEL read, which happens at module-import
+    time (`from .core.logger import logger` at the top of this file, evaluated before main() ever
+    runs) and is not deferrable without restructuring this module's own top-level
+    @mcp.custom_route/TokenExtractionMiddleware definitions - accepted as a known, low-stakes
+    limitation (the logger falls back to its own default, nothing functional breaks).
+    """
+    service_url = os.getenv("AC_CONFIG_SERVICE_URL", "").strip()
+    if not service_url:
+        return
+
+    try:
+        import appcircle_config_client as config_client
+    except ImportError as error:
+        logger.error(
+            "AC_CONFIG_SERVICE_URL is set but appcircle-config-client is not installed - "
+            "install the 'hosted' extra: pip install '.[hosted]'"
+        )
+        raise SystemExit(1) from error
+
+    import anyio
+
+    async def _resolve() -> None:
+        await config_client.bootstrap(
+            service_url=service_url,
+            def_path="envdef.yaml",
+            credential_source=os.getenv("AC_CONFIG_CREDENTIAL_SOURCE"),
+        )
+
+    try:
+        anyio.run(_resolve)
+    except config_client.ConfigClientError as error:
+        logger.error(f"Config service resolve failed: {error}")
+        raise SystemExit(1) from error
+
+
 @mcp.custom_route("/health", methods=["GET"])
 async def health_check(request: Request) -> JSONResponse:
     """Health check endpoint for load balancers and Docker HEALTHCHECK."""
@@ -108,12 +154,15 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     args, _ = parser.parse_known_args(argv)
 
     if args.port is None:
-        env_port = os.getenv("APPCIRCLE_MCP_PORT", "").strip()
+        # AC_PORT is the new name (BE-8827); APPCIRCLE_MCP_PORT is kept as a fallback so a
+        # customer's existing local config keeps working unchanged.
+        port_var = "AC_PORT" if os.getenv("AC_PORT") else "APPCIRCLE_MCP_PORT"
+        env_port = (os.getenv("AC_PORT") or os.getenv("APPCIRCLE_MCP_PORT") or "").strip()
         if env_port:
             try:
                 args.port = int(env_port)
             except ValueError:
-                logger.warning(f"Invalid APPCIRCLE_MCP_PORT value: {env_port!r}, using default 8000")
+                logger.warning(f"Invalid {port_var} value: {env_port!r}, using default 8000")
                 args.port = 8000
         else:
             args.port = 8000
@@ -122,12 +171,18 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     excluded.update(args.exclude or [])
     if args.exclude_toolsets:
         excluded.update(s.strip() for s in args.exclude_toolsets.split(",") if s.strip())
-    env_val = os.getenv("APPCIRCLE_EXCLUDED_TOOLSETS", "").strip()
+    # AC_EXCLUDED_TOOLSETS is the new name; APPCIRCLE_EXCLUDED_TOOLSETS is kept as a fallback.
+    env_val = (os.getenv("AC_EXCLUDED_TOOLSETS") or os.getenv("APPCIRCLE_EXCLUDED_TOOLSETS") or "").strip()
     if env_val:
         excluded.update(s.strip() for s in env_val.split(",") if s.strip())
     args.excluded = excluded
 
-    args.enable_write_tools = _parse_bool_env("AC_MCP_ENABLE_WRITE_TOOLS", default=True)
+    # AC_WRITE_TOOLS_ENABLED is the new name; AC_MCP_ENABLE_WRITE_TOOLS (itself already AC_-prefixed,
+    # just with a redundant own-service "MCP" component - see environment-variables.md's component
+    # rule) is kept as a fallback so a customer's existing local config keeps working unchanged.
+    args.enable_write_tools = _parse_bool_env(
+        "AC_WRITE_TOOLS_ENABLED", default=_parse_bool_env("AC_MCP_ENABLE_WRITE_TOOLS", default=True)
+    )
 
     return args
 
@@ -142,7 +197,8 @@ def _run_http(host: str, port: int) -> None:
     mcp.settings.port = port
     mcp.settings.streamable_http_path = "/"
 
-    allowed_host = os.getenv("APPCIRCLE_MCP_ALLOWED_HOST", "").strip()
+    # AC_ALLOWED_HOST is the new name; APPCIRCLE_MCP_ALLOWED_HOST is kept as a fallback.
+    allowed_host = (os.getenv("AC_ALLOWED_HOST") or os.getenv("APPCIRCLE_MCP_ALLOWED_HOST") or "").strip()
     if allowed_host:
         mcp.settings.transport_security = TransportSecuritySettings(
             enable_dns_rebinding_protection=True,
@@ -159,14 +215,20 @@ def _run_http(host: str, port: int) -> None:
 
 def main():
     """Main entry point for the MCP server."""
+    _bootstrap_hosted_config()
+
     args = _parse_args()
 
-    api_url = os.getenv("APPCIRCLE_API_URL") or ""
+    # AC_API_EXTERNAL_URL is the new name (BE-8827); APPCIRCLE_API_URL is kept as a fallback so
+    # a customer's existing local config keeps working unchanged.
+    api_url = os.getenv("AC_API_EXTERNAL_URL") or os.getenv("APPCIRCLE_API_URL") or ""
 
     if args.transport == "stdio":
-        access_token = os.getenv("APPCIRCLE_ACCESS_TOKEN")
+        # AC_API_ACCESS_TOKEN is the new name; APPCIRCLE_ACCESS_TOKEN is kept as a fallback, same
+        # reasoning as AC_API_EXTERNAL_URL above.
+        access_token = os.getenv("AC_API_ACCESS_TOKEN") or os.getenv("APPCIRCLE_ACCESS_TOKEN")
         if not access_token:
-            logger.error("APPCIRCLE_ACCESS_TOKEN is required for stdio transport")
+            logger.error("AC_API_ACCESS_TOKEN (or APPCIRCLE_ACCESS_TOKEN) is required for stdio transport")
             sys.exit(1)
         settings.configure(access_token=access_token, api_url=api_url)
         settings.validate()
@@ -186,7 +248,7 @@ def main():
     if settings.EXCLUDED_TOOLSETS:
         logger.info(f"Excluded toolsets: {sorted(settings.EXCLUDED_TOOLSETS)}")
     logger.info(f"Write tools enabled: {settings.ENABLE_WRITE_TOOLS}")
-    allowed_host = os.getenv("APPCIRCLE_MCP_ALLOWED_HOST", "").strip()
+    allowed_host = (os.getenv("AC_ALLOWED_HOST") or os.getenv("APPCIRCLE_MCP_ALLOWED_HOST") or "").strip()
     if args.transport != "stdio" and allowed_host:
         logger.info(f"Allowed Host (streamable-http): {allowed_host}")
 

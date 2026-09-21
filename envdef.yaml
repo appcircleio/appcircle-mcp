@@ -1,0 +1,28 @@
+# BE-8827: service-owned local env definition, resolved by Appcircle ConfigService at startup via
+# the optional `appcircle-config-client` dependency (see server.py's _bootstrap_hosted_config()).
+# Only consumed by Appcircle's own hosted deployment (mcp.appcircle.io) - never read at all for a
+# customer's local/self-hosted install, which never sets AC_CONFIG_SERVICE_URL. Same shape every
+# service commits to its own repo - see appcircle.io/Appcircle.ScheduleService/src/
+# Appcircle.ScheduleService.WebApi/envdef.yaml for the .NET-side sibling example this mirrors, and
+# ac-lib-node-config's docs/tasks/PL-123/spec.md for the platform-wide design this is part of.
+#
+# AC_API_ACCESS_TOKEN is deliberately absent here: the hosted deployment only ever runs
+# --transport streamable-http, where each request carries its own caller-supplied bearer token
+# (see TokenExtractionMiddleware in server.py) - the server itself never holds a static API token.
+#
+# TODO before this ships: `service: appcircle-mcp` and `${context:mcp_external_url}` are proposed,
+# not confirmed against Config Service's actual DeploymentContext/service-onboarding records - an
+# infra/Config-Service-owning person needs to confirm or correct them (see the "Service Naming"
+# section in doc/internal-doc/docs/development/backend/conventions/deployment-context-and-service-naming.md
+# for why this can't be derived from docs alone). `${context:api_external_url}` below, by contrast,
+# *is* a confirmed, existing context name - reused as-is, not proposed.
+version: 1
+service: appcircle-mcp
+def:
+  AC_LOG_MIN_LEVEL: Info
+  AC_PORT: "8080"
+  AC_EXCLUDED_TOOLSETS: ""
+  AC_WRITE_TOOLS_ENABLED: "true"
+
+  AC_API_EXTERNAL_URL: "${context:api_external_url}"
+  AC_ALLOWED_HOST: "${context:mcp_external_url}" # not yet in contextdef.yaml

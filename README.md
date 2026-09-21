@@ -37,15 +37,23 @@ Client-specific setup guides:
 
 ## Configuration (Environment Variables)
 
-| Variable | Required | Description |
+Each variable below has a new, `AC_`-prefixed name (Appcircle's platform-wide naming convention)
+and its original name, kept working as a fallback — set either one, the new name just wins if both
+are set. Existing configs using the original names need no changes.
+
+| Variable (new / original) | Required | Description |
 |----------|----------|-------------|
-| `APPCIRCLE_ACCESS_TOKEN` | Yes (stdio only) | Appcircle API access token. Required when using stdio transport. For streamable-http, each client sends its own token. See [Obtaining a token](docs/appcircle_access_token.md) for how to get one. |
-| `APPCIRCLE_API_URL` | No | API base URL (default: `https://api.appcircle.io` may differ for self-hosted users). |
-| `APPCIRCLE_MCP_ALLOWED_HOST` | No (streamable-http only) | Public hostname for the MCP server (e.g. `mcp.appcircle.io`). Set this when deploying behind a reverse proxy so the server accepts the `Host` header from clients. Omit for localhost. |
-| `APPCIRCLE_MCP_PORT` | No (streamable-http only) | Bind port for the HTTP server (default: `8000`). Overridden by `--port` if provided. Useful for on-prem or Docker when a specific port is required. |
-| `LOG_LEVEL` | No | Logging level, e.g. `DEBUG`, `INFO` (default: `INFO`). |
-| `APPCIRCLE_EXCLUDED_TOOLSETS` | No | Comma-separated toolsets to exclude (e.g. `build_module,report`). See [Toolsets](#toolsets) below. |
-| `AC_MCP_ENABLE_WRITE_TOOLS` | No | Write/action tools (e.g. `trigger_build`, `cancel_build`) are registered by default. Set to `false`/`0`/`no`/`off` to opt out and not register them at all (not just disable at call time). |
+| `AC_API_ACCESS_TOKEN` / `APPCIRCLE_ACCESS_TOKEN` | Yes (stdio only) | Appcircle API access token. Required when using stdio transport. For streamable-http, each client sends its own token. See [Obtaining a token](docs/appcircle_access_token.md) for how to get one. |
+| `AC_API_EXTERNAL_URL` / `APPCIRCLE_API_URL` | No | API base URL (default: `https://api.appcircle.io` may differ for self-hosted users). |
+| `AC_ALLOWED_HOST` / `APPCIRCLE_MCP_ALLOWED_HOST` | No (streamable-http only) | Public hostname for the MCP server (e.g. `mcp.appcircle.io`). Set this when deploying behind a reverse proxy so the server accepts the `Host` header from clients. Omit for localhost. |
+| `AC_PORT` / `APPCIRCLE_MCP_PORT` | No (streamable-http only) | Bind port for the HTTP server (default: `8000`). Overridden by `--port` if provided. Useful for on-prem or Docker when a specific port is required. |
+| `AC_LOG_MIN_LEVEL` / `LOG_LEVEL` | No | Logging level, e.g. `DEBUG`, `INFO` (default: `INFO`). |
+| `AC_EXCLUDED_TOOLSETS` / `APPCIRCLE_EXCLUDED_TOOLSETS` | No | Comma-separated toolsets to exclude (e.g. `build_module,report`). See [Toolsets](#toolsets) below. |
+| `AC_WRITE_TOOLS_ENABLED` / `AC_MCP_ENABLE_WRITE_TOOLS` | No | Write/action tools (e.g. `trigger_build`, `cancel_build`) are registered by default. Set to `false`/`0`/`no`/`off` to opt out and not register them at all (not just disable at call time). |
+
+Appcircle's own hosted deployment (`mcp.appcircle.io`) additionally resolves these through
+Appcircle ConfigService at startup when `AC_CONFIG_SERVICE_URL` is set — irrelevant for a local or
+self-hosted install, which never sets it. See `envdef.yaml` and `docs/tasks/BE-8827/spec.md`.
 
 Set these in your shell or in your MCP client’s configuration.
 

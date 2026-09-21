@@ -42,6 +42,14 @@ dev = [
   "respx==0.22.0",
   "pip-audit==2.10.0",
 ]
+# Only installed for Appcircle's own hosted deployment (mcp.appcircle.io) - never by a customer's
+# local `pip install .`. appcircle-config-client lives on the private Nexus registry
+# (nexus.appcircle.io/repository/pypi-hosted), unreachable without org credentials, so it cannot
+# be a plain (non-optional) dependency without breaking every customer install. See
+# docs/tasks/BE-8827/spec.md and server.py's _bootstrap_hosted_config().
+hosted = [
+  "appcircle-config-client>=0.1.0",
+]
 
 [project.scripts]
 appcircle-mcp = "src.server:main"

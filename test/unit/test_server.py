@@ -309,3 +309,98 @@ class TestParseArgsPort:
         mock_run_http.assert_called_once_with("127.0.0.1", 8000)
         mock_logger.warning.assert_called()
         assert "APPCIRCLE_MCP_PORT" in str(mock_logger.warning.call_args)
+
+
+class TestBootstrapHostedConfig:
+    """Tests for _bootstrap_hosted_config() - BE-8827's Config Service integration, only active
+    for Appcircle's own hosted deployment, never for a customer's local/self-hosted install."""
+
+    def test_noop_when_service_url_unset(self, monkeypatch):
+        """No AC_CONFIG_SERVICE_URL - the default for every local/customer install - means this
+        never even attempts the appcircle_config_client import."""
+        monkeypatch.delenv("AC_CONFIG_SERVICE_URL", raising=False)
+
+        import src.server as server_module
+
+        # Would raise ModuleNotFoundError if it tried to import (the package isn't installed in
+        # this dev environment - it's an optional "hosted" extra, deliberately not a dev dependency
+        # either, to keep the test environment matching a real customer install).
+        server_module._bootstrap_hosted_config()
+
+    def test_exits_with_clear_message_when_extra_not_installed(self, monkeypatch):
+        """AC_CONFIG_SERVICE_URL set but the optional 'hosted' extra isn't installed - a
+        misconfigured hosted deployment, not a customer scenario - fails loudly."""
+        monkeypatch.setenv("AC_CONFIG_SERVICE_URL", "http://ac-config/v1/config/resolve")
+
+        import src.server as server_module
+
+        with patch("src.server.logger") as mock_logger:
+            with pytest.raises(SystemExit) as exc_info:
+                server_module._bootstrap_hosted_config()
+
+        assert exc_info.value.code == 1
+        mock_logger.error.assert_called_once()
+        assert "hosted" in str(mock_logger.error.call_args)
+
+    def test_calls_bootstrap_with_service_url_and_credential_source(self, monkeypatch):
+        """When the optional dependency is available, resolves via anyio.run and passes through
+        AC_CONFIG_SERVICE_URL / AC_CONFIG_CREDENTIAL_SOURCE."""
+        import sys
+        import types
+
+        monkeypatch.setenv("AC_CONFIG_SERVICE_URL", "http://ac-config/v1/config/resolve")
+        monkeypatch.setenv("AC_CONFIG_CREDENTIAL_SOURCE", "/var/run/secrets/token")
+
+        calls = []
+
+        async def fake_bootstrap(**kwargs):
+            calls.append(kwargs)
+
+        class FakeConfigClientError(Exception):
+            pass
+
+        fake_module = types.ModuleType("appcircle_config_client")
+        fake_module.bootstrap = fake_bootstrap
+        fake_module.ConfigClientError = FakeConfigClientError
+        monkeypatch.setitem(sys.modules, "appcircle_config_client", fake_module)
+
+        import src.server as server_module
+
+        server_module._bootstrap_hosted_config()
+
+        assert calls == [
+            {
+                "service_url": "http://ac-config/v1/config/resolve",
+                "def_path": "envdef.yaml",
+                "credential_source": "/var/run/secrets/token",
+            }
+        ]
+
+    def test_exits_with_clear_message_on_config_client_error(self, monkeypatch):
+        """A resolve failure (ConfigClientError) is logged and turned into a fatal exit, not an
+        unhandled traceback."""
+        import sys
+        import types
+
+        monkeypatch.setenv("AC_CONFIG_SERVICE_URL", "http://ac-config/v1/config/resolve")
+
+        class FakeConfigClientError(Exception):
+            pass
+
+        async def failing_bootstrap(**kwargs):
+            raise FakeConfigClientError("unreachable")
+
+        fake_module = types.ModuleType("appcircle_config_client")
+        fake_module.bootstrap = failing_bootstrap
+        fake_module.ConfigClientError = FakeConfigClientError
+        monkeypatch.setitem(sys.modules, "appcircle_config_client", fake_module)
+
+        import src.server as server_module
+
+        with patch("src.server.logger") as mock_logger:
+            with pytest.raises(SystemExit) as exc_info:
+                server_module._bootstrap_hosted_config()
+
+        assert exc_info.value.code == 1
+        mock_logger.error.assert_called_once()
+        assert "unreachable" in str(mock_logger.error.call_args)
