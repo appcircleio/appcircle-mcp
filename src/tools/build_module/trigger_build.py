@@ -6,6 +6,7 @@ from mcp.types import ToolAnnotations
 
 from ...mcp_instance import mcp
 from ...core.api_client import ApiClient
+from ...core.validation import path_segment
 from ...core.error_handler import handle_write_api_error
 from ...core.logger import logger
 from ...schemas.responses import success_response
@@ -91,16 +92,16 @@ async def trigger_build(
             trigger_mode = "commit"
             if workflow_id is not None:
                 params["workflowId"] = workflow_id
-                endpoint = f"/build/v3/commits/{commit_id}/build/by-workflow"
+                endpoint = f"/build/v3/commits/{path_segment(commit_id, 'commit_id')}/build/by-workflow"
             else:
-                endpoint = f"/build/v3/commits/{commit_id}/build"
+                endpoint = f"/build/v3/commits/{path_segment(commit_id, 'commit_id')}/build"
             logger.debug(f"Triggering build (commit mode) - commit_id: {commit_id}, params: {params}")
             response = await api_client.post(endpoint, params=params)
         else:
             trigger_mode = "branch"
             if branch_name is not None:
                 params["branchName"] = branch_name
-            endpoint = f"/build/v2/profiles/{profile_id}/workflow/{workflow_id}"
+            endpoint = f"/build/v2/profiles/{path_segment(profile_id, 'profile_id')}/workflow/{path_segment(workflow_id, 'workflow_id')}"
             logger.debug(
                 f"Triggering build (branch mode) - profile_id: {profile_id}, "
                 f"workflow_id: {workflow_id}, params: {params}"

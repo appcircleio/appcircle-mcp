@@ -87,7 +87,7 @@ class TestFindWorkflowId:
 @pytest.mark.asyncio
 class TestFetchWorkflowList:
     async def test_returns_raw_list_response_as_is(self, mocked_api):
-        mocked_api.get("/build/v2/profiles/p1/workflows/").mock(
+        mocked_api.get("/build/v2/profiles/p1/workflows").mock(
             return_value=Response(200, json=[{"id": "1", "workflowName": "A"}])
         )
         async with ApiClient() as api_client:
@@ -95,7 +95,7 @@ class TestFetchWorkflowList:
         assert workflows == [{"id": "1", "workflowName": "A"}]
 
     async def test_normalizes_dict_wrapped_response(self, mocked_api):
-        mocked_api.get("/build/v2/profiles/p1/workflows/").mock(
+        mocked_api.get("/build/v2/profiles/p1/workflows").mock(
             return_value=Response(200, json={"data": [{"id": "1", "workflowName": "A"}]})
         )
         async with ApiClient() as api_client:
@@ -103,7 +103,7 @@ class TestFetchWorkflowList:
         assert workflows == [{"id": "1", "workflowName": "A"}]
 
     async def test_unrecognized_response_returns_empty_list(self, mocked_api):
-        mocked_api.get("/build/v2/profiles/p1/workflows/").mock(return_value=Response(200, json="oops"))
+        mocked_api.get("/build/v2/profiles/p1/workflows").mock(return_value=Response(200, json="oops"))
         async with ApiClient() as api_client:
             assert await fetch_workflow_list(api_client, "p1") == []
 
@@ -180,7 +180,7 @@ class TestFetchProfileWorkflowYaml:
             _build(workflow="Push WF", trigger=2),
             _build(workflow="PR WF", trigger=1),
         ]
-        mocked_api.get("/build/v2/profiles/p1/workflows/").mock(
+        mocked_api.get("/build/v2/profiles/p1/workflows").mock(
             return_value=Response(200, json=[
                 {"id": "push-id", "workflowName": "Push WF"},
                 {"id": "pr-id", "workflowName": "PR WF"},
@@ -201,7 +201,7 @@ class TestFetchProfileWorkflowYaml:
 
     async def test_unresolved_workflow_id_yields_none_for_that_side(self, mocked_api):
         curr_builds = [_build(workflow="Push WF", trigger=2)]  # no PR activity
-        mocked_api.get("/build/v2/profiles/p1/workflows/").mock(
+        mocked_api.get("/build/v2/profiles/p1/workflows").mock(
             return_value=Response(200, json=[{"id": "push-id", "workflowName": "Push WF"}])
         )
         mocked_api.get("/build/v2/profiles/p1/workflows/push-id").mock(
@@ -236,7 +236,7 @@ class TestFetchProfileWorkflowYaml:
 
         assert push["workflow_name"] == "Push WF"
         assert pr["workflow_name"] == "PR WF"
-        workflow_list_calls = [c for c in mocked_api.calls if str(c.request.url).endswith("/workflows/")]
+        workflow_list_calls = [c for c in mocked_api.calls if str(c.request.url).endswith("/workflows")]
         assert workflow_list_calls == []  # not needed -- trigger config already gave the id
 
     async def test_history_resolution_takes_priority_over_trigger_config(self, mocked_api):
@@ -244,7 +244,7 @@ class TestFetchProfileWorkflowYaml:
         fallback must not override it with a different workflow."""
         curr_builds = [_build(workflow="Push WF", trigger=2)]
         triggers = {"pushSettings": [{"workflowId": "other-id"}], "pullRequestSettings": []}
-        mocked_api.get("/build/v2/profiles/p1/workflows/").mock(
+        mocked_api.get("/build/v2/profiles/p1/workflows").mock(
             return_value=Response(200, json=[{"id": "push-id", "workflowName": "Push WF"}])
         )
         workflow_route = mocked_api.get("/build/v2/profiles/p1/workflows/push-id").mock(

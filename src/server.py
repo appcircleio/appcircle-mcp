@@ -2,6 +2,7 @@ import argparse
 import os
 import sys
 
+import jwt
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
@@ -9,10 +10,20 @@ from . import __version__
 from .mcp_instance import mcp
 from .config.settings import settings, TOOLSETS
 from .core.logger import logger
-from .core.auth import set_request_token, reset_request_token
+from .core.auth import reset_request_token, set_request_token, verify_access_token
 
 VALID_TRANSPORTS = ("stdio", "streamable-http")
 TRUE_ENV_VALUES = {"1", "true", "yes", "on"}
+UNAUTHENTICATED_PATHS = frozenset({"/health", "/.well-known/oauth-protected-resource"})
+
+
+def _unauthorized(message: str) -> JSONResponse:
+    """401 response with the WWW-Authenticate challenge required by the MCP auth spec."""
+    return JSONResponse(
+        {"error": message},
+        status_code=401,
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 def _parse_bool_env(name: str, default: bool = False) -> bool:
@@ -30,7 +41,7 @@ async def health_check(request: Request) -> JSONResponse:
 
 
 class TokenExtractionMiddleware:
-    """ASGI middleware: extract Authorization Bearer token into context for pass-through auth."""
+    """ASGI middleware: verify the Authorization Bearer token and put it in context for pass-through auth."""
 
     def __init__(self, app):
         self.app = app
@@ -44,19 +55,22 @@ class TokenExtractionMiddleware:
         auth_value = headers.get(b"authorization", b"").decode("utf-8", errors="replace")
 
         path = scope.get("path", "")
-        if path == "/health":
+        if path in UNAUTHENTICATED_PATHS:
             await self.app(scope, receive, send)
             return
 
         if not auth_value.strip().lower().startswith("bearer "):
-            response = JSONResponse(
-                {"error": "Missing Authorization header"},
-                status_code=401,
-            )
-            await response(scope, receive, send)
+            await _unauthorized("Missing Authorization header")(scope, receive, send)
             return
 
-        token_value = auth_value[7:].strip()
+        token_value = auth_value.strip()[7:].strip()
+        try:
+            verify_access_token(token_value)
+        except jwt.PyJWTError as e:
+            logger.debug(f"Rejected access token: {type(e).__name__}")
+            await _unauthorized("Invalid or expired access token")(scope, receive, send)
+            return
+
         tok = set_request_token(token_value)
         try:
             await self.app(scope, receive, send)

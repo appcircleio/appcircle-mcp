@@ -6,6 +6,7 @@ from mcp.types import ToolAnnotations
 
 from ...mcp_instance import mcp
 from ...core.api_client import ApiClient
+from ...core.validation import path_segment
 from ...core.error_handler import handle_write_api_error
 from ...core.logger import logger
 from ...schemas.responses import success_response
@@ -63,7 +64,7 @@ async def update_app_version_release_notes(
 
         api_client = ApiClient()
         response = await api_client.patch(
-            f"/distribution/v3/profiles/{profile_id}/app-versions/{app_version_id}/message",
+            f"/distribution/v3/profiles/{path_segment(profile_id, 'profile_id')}/app-versions/{path_segment(app_version_id, 'app_version_id')}/message",
             json_data={"message": message},
         )
 

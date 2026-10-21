@@ -4,6 +4,7 @@ from typing import Dict, Any
 
 from ...mcp_instance import mcp
 from ...core.api_client import ApiClient
+from ...core.validation import path_segment
 from ...core.error_handler import handle_api_error
 from ...core.logger import logger
 from ...schemas.responses import success_response
@@ -37,7 +38,7 @@ async def get_build_status(commit_id: str, build_id: str) -> Dict[str, Any]:
 
         api_client = ApiClient()
         response = await api_client.get(
-            f"/build/v2/commits/{commit_id}/builds/{build_id}/status"
+            f"/build/v2/commits/{path_segment(commit_id, 'commit_id')}/builds/{path_segment(build_id, 'build_id')}/status"
         )
 
         data = response if isinstance(response, dict) else {}

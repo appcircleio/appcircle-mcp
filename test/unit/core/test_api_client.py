@@ -342,3 +342,37 @@ class TestApiClientDelete:
         client = ApiClient()
         result = await client.delete("/build/v2/profiles/123")
         assert result == {}
+
+
+UNSAFE_ENDPOINTS = [
+    "/build/v2/profiles/../../../identity/v1/users",
+    "/build/v2/profiles/./x",
+    "/build/v2/profiles/..",
+    "/build/v2/profiles/%2e%2e%2fidentity",
+    "/build/v2/profiles/x?admin=true",
+    "/build/v2/profiles/x#",
+    "/build/v2/profiles/..\\identity",
+    "build/v2/profiles",
+    "@evil.example.com/x",
+]
+
+
+@pytest.mark.asyncio
+class TestApiClientEndpointGuard:
+    """ApiClient rejects endpoints that could escape their intended path, before any request."""
+
+    @pytest.mark.parametrize("endpoint", UNSAFE_ENDPOINTS)
+    @pytest.mark.parametrize("method", ["get", "get_text", "post", "patch", "put", "delete"])
+    async def test_unsafe_endpoint_raises_without_request(self, mocked_api, method, endpoint):
+        """Every request method raises ValueError and sends nothing for an unsafe endpoint."""
+        client = ApiClient()
+        with pytest.raises(ValueError, match="Invalid endpoint path"):
+            await getattr(client, method)(endpoint)
+        assert mocked_api.calls.call_count == 0
+
+    async def test_safe_endpoint_with_trailing_slash_is_sent(self, mocked_api):
+        """Normal endpoints, including a trailing slash, are sent unchanged."""
+        mocked_api.get("/build/v2/profiles/abc-123/workflows/").mock(return_value=Response(200, json=[]))
+        client = ApiClient()
+        await client.get("/build/v2/profiles/abc-123/workflows/")
+        assert mocked_api.calls.last.request.url.path == "/build/v2/profiles/abc-123/workflows/"

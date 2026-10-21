@@ -29,7 +29,7 @@ SAMPLE_WORKFLOWS = [
 @pytest.mark.asyncio
 async def test_get_build_profile_workflows_success(mocked_api):
     """Returns success envelope with data (list of workflows) and meta count when API returns list."""
-    mocked_api.get(f"/build/v2/profiles/{PROFILE_ID}/workflows/").mock(
+    mocked_api.get(f"/build/v2/profiles/{PROFILE_ID}/workflows").mock(
         return_value=Response(200, json=SAMPLE_WORKFLOWS)
     )
 
@@ -41,13 +41,13 @@ async def test_get_build_profile_workflows_success(mocked_api):
     assert result["data"][0]["profileId"] == PROFILE_ID
     assert result["data"][0]["workflowName"] == "Default Push Workflow"
     assert result["meta"]["count"] == 2
-    assert mocked_api.calls.last.request.url.path == f"/build/v2/profiles/{PROFILE_ID}/workflows/"
+    assert mocked_api.calls.last.request.url.path == f"/build/v2/profiles/{PROFILE_ID}/workflows"
 
 
 @pytest.mark.asyncio
 async def test_get_build_profile_workflows_empty_list(mocked_api):
     """Returns success with empty data list and count 0 when API returns empty list."""
-    mocked_api.get(f"/build/v2/profiles/{PROFILE_ID}/workflows/").mock(
+    mocked_api.get(f"/build/v2/profiles/{PROFILE_ID}/workflows").mock(
         return_value=Response(200, json=[])
     )
 
@@ -61,7 +61,7 @@ async def test_get_build_profile_workflows_empty_list(mocked_api):
 @pytest.mark.asyncio
 async def test_get_build_profile_workflows_wrapper_response(mocked_api):
     """API returning wrapper (e.g. data/workflows) is normalized to list in data."""
-    mocked_api.get(f"/build/v2/profiles/{PROFILE_ID}/workflows/").mock(
+    mocked_api.get(f"/build/v2/profiles/{PROFILE_ID}/workflows").mock(
         return_value=Response(200, json={"data": SAMPLE_WORKFLOWS})
     )
 
@@ -75,7 +75,7 @@ async def test_get_build_profile_workflows_wrapper_response(mocked_api):
 @pytest.mark.asyncio
 async def test_get_build_profile_workflows_error_returns_unified_envelope(mocked_api):
     """When API returns 500, tool returns standard error envelope."""
-    mocked_api.get(f"/build/v2/profiles/{PROFILE_ID}/workflows/").mock(
+    mocked_api.get(f"/build/v2/profiles/{PROFILE_ID}/workflows").mock(
         return_value=Response(500, json={"message": "Internal server error"})
     )
 

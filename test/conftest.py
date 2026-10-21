@@ -61,6 +61,44 @@ def mocked_api():
         yield router
 
 
+TEST_TOKEN_ISSUER = "https://auth.example.com/auth/realms/appcircle"
+TEST_TOKEN_KID = "test-kid"
+
+
+@pytest.fixture(scope="session")
+def rsa_signing_key():
+    """RSA private key that signs test tokens."""
+    from cryptography.hazmat.primitives.asymmetric import rsa
+
+    return rsa.generate_private_key(public_exponent=65537, key_size=2048)
+
+
+@pytest.fixture
+def token_signer(rsa_signing_key):
+    """
+    Return a helper that signs RS256 tokens shaped like Appcircle access tokens.
+
+    Example:
+        token = token_signer.sign()                  # valid token
+        token = token_signer.sign(exp_offset=-60)    # expired
+        token = token_signer.sign(issuer=None)       # no iss claim
+    """
+    import time
+
+    import jwt
+
+    class Signer:
+        @staticmethod
+        def sign(key=None, kid=TEST_TOKEN_KID, issuer=TEST_TOKEN_ISSUER, exp_offset=3600, **claims):
+            payload = {"iss": issuer, "exp": int(time.time()) + exp_offset, "sub": "user-1", **claims}
+            if issuer is None:
+                payload.pop("iss")
+            headers = {"kid": kid} if kid is not None else {}
+            return jwt.encode(payload, key or rsa_signing_key, algorithm="RS256", headers=headers)
+
+    return Signer
+
+
 @pytest.fixture
 def sample_build_profiles():
     """Sample build profiles list as returned by GET /build/v2/profiles."""

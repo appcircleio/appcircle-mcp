@@ -4,6 +4,7 @@ from typing import Dict, Any, Optional
 
 from ...mcp_instance import mcp
 from ...core.api_client import ApiClient
+from ...core.validation import path_segment
 from ...core.error_handler import handle_api_error
 from ...core.logger import logger
 from ...schemas.responses import success_response
@@ -98,7 +99,7 @@ async def get_store_profile_details(
         logger.debug(f"Fetching enterprise app store profile details - profile_id: {profile_id}, page: {page}, size: {size}")
 
         api_client = ApiClient()
-        response = await api_client.get(f"/store/v2/profiles/{profile_id}", params=params)
+        response = await api_client.get(f"/store/v2/profiles/{path_segment(profile_id, 'profile_id')}", params=params)
 
         if not isinstance(response, dict):
             response = {}

@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Literal
 
 from ...mcp_instance import mcp
 from ...core.api_client import ApiClient
+from ...core.validation import path_segment
 from ...core.error_handler import handle_api_error
 from ...core.logger import logger
 from ...schemas.responses import success_response
@@ -58,7 +59,7 @@ async def get_metadata_locales(
 
         api_client = ApiClient()
         response = await api_client.get(
-            f"/publish/v2/profiles/{platform_type}/{profile_id}/app-versions/{app_version_id}/metadata/locales"
+            f"/publish/v2/profiles/{platform_type}/{path_segment(profile_id, 'profile_id')}/app-versions/{path_segment(app_version_id, 'app_version_id')}/metadata/locales"
         )
 
         data = _normalize_locales_response(response)

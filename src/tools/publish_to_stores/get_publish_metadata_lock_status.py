@@ -4,6 +4,7 @@ from typing import Any, Dict, Literal
 
 from ...mcp_instance import mcp
 from ...core.api_client import ApiClient
+from ...core.validation import path_segment
 from ...core.error_handler import handle_api_error
 from ...core.logger import logger
 from ...schemas.responses import success_response
@@ -42,7 +43,7 @@ async def get_publish_metadata_lock_status(
         )
 
         api_client = ApiClient()
-        response = await api_client.get(f"/publish/v2/profiles/{platform_type}/{profile_id}/metadata/lock")
+        response = await api_client.get(f"/publish/v2/profiles/{platform_type}/{path_segment(profile_id, 'profile_id')}/metadata/lock")
 
         data = response if isinstance(response, dict) else {}
 

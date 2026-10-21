@@ -6,6 +6,7 @@ from mcp.types import ToolAnnotations
 
 from ...mcp_instance import mcp
 from ...core.api_client import ApiClient
+from ...core.validation import path_segment
 from ...core.error_handler import handle_write_api_error
 from ...core.logger import logger
 from ...schemas.responses import success_response
@@ -66,7 +67,7 @@ async def start_publish(
 
         api_client = ApiClient()
         response = await api_client.post(
-            f"/publish/v3/profiles/{platform_type}/{profile_id}/publish/{publish_id}/start",
+            f"/publish/v3/profiles/{platform_type}/{path_segment(profile_id, 'profile_id')}/publish/{path_segment(publish_id, 'publish_id')}/start",
             params=params,
         )
 

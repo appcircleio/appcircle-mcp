@@ -43,7 +43,7 @@ SAMPLE_PAGINATION = {
 @pytest.mark.asyncio
 async def test_get_commits_by_branch_success_no_pagination(mocked_api):
     """Returns success envelope with data and count in meta when no page/size (raw list)."""
-    mocked_api.get("/build/v2/commits/").mock(
+    mocked_api.get("/build/v2/commits").mock(
         return_value=Response(200, json=SAMPLE_COMMITS)
     )
 
@@ -62,7 +62,7 @@ async def test_get_commits_by_branch_success_no_pagination(mocked_api):
 async def test_get_commits_by_branch_success_with_pagination(mocked_api):
     """When page/size provided, API returns pagination wrapper; meta includes pagination fields."""
     response_body = {"pagination": SAMPLE_PAGINATION, "data": SAMPLE_COMMITS}
-    mocked_api.get("/build/v2/commits/").mock(
+    mocked_api.get("/build/v2/commits").mock(
         return_value=Response(200, json=response_body)
     )
 
@@ -86,7 +86,7 @@ async def test_get_commits_by_branch_success_with_pagination(mocked_api):
 async def test_get_commits_by_branch_pagination_params(mocked_api):
     """page and size are passed to API and reflected in meta."""
     pagination_page2 = {**SAMPLE_PAGINATION, "page": 2, "perPage": 10}
-    mocked_api.get("/build/v2/commits/").mock(
+    mocked_api.get("/build/v2/commits").mock(
         return_value=Response(200, json={"pagination": pagination_page2, "data": SAMPLE_COMMITS})
     )
 
@@ -104,7 +104,7 @@ async def test_get_commits_by_branch_pagination_params(mocked_api):
 async def test_get_commits_by_branch_size_cap(mocked_api):
     """Requested size above 100 is capped at 100 and sent to API; meta reflects API response."""
     pagination_100 = {**SAMPLE_PAGINATION, "perPage": 100}
-    mocked_api.get("/build/v2/commits/").mock(
+    mocked_api.get("/build/v2/commits").mock(
         return_value=Response(200, json={"pagination": pagination_100, "data": []})
     )
 
@@ -117,7 +117,7 @@ async def test_get_commits_by_branch_size_cap(mocked_api):
 @pytest.mark.asyncio
 async def test_get_commits_by_branch_wrapper_response_no_pagination(mocked_api):
     """API returning wrapper { data: [...] } without page/size is normalized; meta has count."""
-    mocked_api.get("/build/v2/commits/").mock(
+    mocked_api.get("/build/v2/commits").mock(
         return_value=Response(200, json={"data": SAMPLE_COMMITS})
     )
 
@@ -131,7 +131,7 @@ async def test_get_commits_by_branch_wrapper_response_no_pagination(mocked_api):
 @pytest.mark.asyncio
 async def test_get_commits_by_branch_only_page_uses_defaults(mocked_api):
     """When only page is provided, size defaults to 25."""
-    mocked_api.get("/build/v2/commits/").mock(
+    mocked_api.get("/build/v2/commits").mock(
         return_value=Response(200, json={"pagination": SAMPLE_PAGINATION, "data": []})
     )
 
@@ -145,7 +145,7 @@ async def test_get_commits_by_branch_only_page_uses_defaults(mocked_api):
 @pytest.mark.asyncio
 async def test_get_commits_by_branch_error_returns_unified_envelope(mocked_api):
     """When API returns 500, tool returns standard error envelope."""
-    mocked_api.get("/build/v2/commits/").mock(
+    mocked_api.get("/build/v2/commits").mock(
         return_value=Response(500, json={"message": "Internal server error"})
     )
 

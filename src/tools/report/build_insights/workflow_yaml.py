@@ -49,7 +49,7 @@ def resolve_push_pr_workflow_names(
 async def fetch_workflow_list(api_client: ApiClient, profile_id: str) -> List[Dict[str, Any]]:
     """GET /build/v2/profiles/{profile_id}/workflows/ -- a bare list of
     {id, workflowName, lastUsedTime, ...}."""
-    response = await api_client.get(f"/build/v2/profiles/{profile_id}/workflows/")
+    response = await api_client.get(f"/build/v2/profiles/{profile_id}/workflows")
     if isinstance(response, list):
         return response
     if isinstance(response, dict):

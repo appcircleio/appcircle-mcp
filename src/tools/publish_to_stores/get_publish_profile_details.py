@@ -4,6 +4,7 @@ from typing import Dict, Any, Optional, Literal
 
 from ...mcp_instance import mcp
 from ...core.api_client import ApiClient
+from ...core.validation import path_segment
 from ...core.error_handler import handle_api_error
 from ...core.logger import logger
 from ...schemas.responses import success_response
@@ -91,6 +92,7 @@ async def get_publish_profile_details(
         params = {
             "page": str(page),
             "size": str(size),
+            "addAppVersions": "true",
         }
 
         logger.debug(
@@ -99,7 +101,7 @@ async def get_publish_profile_details(
 
         api_client = ApiClient()
         response = await api_client.get(
-            f"/publish/v2/profiles/{platform_type}/{profile_id}",
+            f"/publish/v2/profiles/{platform_type}/{path_segment(profile_id, 'profile_id')}",
             params=params,
         )
 

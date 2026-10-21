@@ -43,6 +43,7 @@ async def test_get_publish_profile_details_success_ios(mocked_api):
     params = mocked_api.calls.last.request.url.params
     assert params.get("page") == "1"
     assert params.get("size") == "25"
+    assert params.get("addAppVersions") == "true"
 
 
 @pytest.mark.asyncio
@@ -61,7 +62,7 @@ async def test_get_publish_profile_details_success_android(mocked_api):
 
 @pytest.mark.asyncio
 async def test_get_publish_profile_details_pagination_params(mocked_api):
-    """page and size are passed to API and meta reflects pagination."""
+    """page and size are passed to API alongside addAppVersions."""
     mocked_api.get(f"/publish/v2/profiles/ios/{PROFILE_ID}").mock(
         return_value=Response(200, json=SAMPLE_RESPONSE)
     )
@@ -74,6 +75,7 @@ async def test_get_publish_profile_details_pagination_params(mocked_api):
     params = mocked_api.calls.last.request.url.params
     assert params.get("page") == "2"
     assert params.get("size") == "5"
+    assert params.get("addAppVersions") == "true"
 
 
 @pytest.mark.asyncio

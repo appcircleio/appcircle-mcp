@@ -7,6 +7,10 @@ from ..config.settings import settings
 from .auth import get_access_token
 from .logger import logger
 
+# Characters that are never part of a legitimate endpoint path (query/fragment
+# delimiters, backslash, percent-encoding)
+_FORBIDDEN_ENDPOINT_CHARS = frozenset("?#\\%")
+
 
 class ApiClient:
 
@@ -39,6 +43,16 @@ class ApiClient:
             async with httpx.AsyncClient() as client:
                 yield client
 
+    def _url(self, endpoint: str) -> str:
+        """Build the full request URL, rejecting endpoints that could escape their intended path."""
+        if (
+            not endpoint.startswith("/")
+            or _FORBIDDEN_ENDPOINT_CHARS.intersection(endpoint)
+            or any(segment in (".", "..") for segment in endpoint.split("/"))
+        ):
+            raise ValueError(f"Invalid endpoint path: {endpoint!r}")
+        return f"{self.base_url}{endpoint}"
+
     async def get(
         self,
         endpoint: str,
@@ -58,7 +72,7 @@ class ApiClient:
 
         async with self._get_client() as client:
             response = await client.get(
-                f"{self.base_url}{endpoint}",
+                self._url(endpoint),
                 headers=self.headers,
                 params=params,
                 timeout=self.timeout,
@@ -93,7 +107,7 @@ class ApiClient:
 
         async with self._get_client() as client:
             response = await client.get(
-                f"{self.base_url}{endpoint}",
+                self._url(endpoint),
                 headers=self.headers,
                 params=params,
                 timeout=self.timeout,
@@ -132,7 +146,7 @@ class ApiClient:
 
         async with self._get_client() as client:
             response = await client.post(
-                f"{self.base_url}{endpoint}",
+                self._url(endpoint),
                 headers=headers,
                 json=json_data,
                 data=data,
@@ -170,7 +184,7 @@ class ApiClient:
 
         async with self._get_client() as client:
             response = await client.patch(
-                f"{self.base_url}{endpoint}",
+                self._url(endpoint),
                 headers=self.headers,
                 json=json_data,
                 timeout=self.timeout,
@@ -198,7 +212,7 @@ class ApiClient:
 
         async with self._get_client() as client:
             response = await client.delete(
-                f"{self.base_url}{endpoint}",
+                self._url(endpoint),
                 headers=self.headers,
                 timeout=self.timeout,
             )
@@ -234,7 +248,7 @@ class ApiClient:
 
         async with self._get_client() as client:
             response = await client.put(
-                f"{self.base_url}{endpoint}",
+                self._url(endpoint),
                 headers=self.headers,
                 json=json_data,
                 params=params,
