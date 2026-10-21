@@ -4,6 +4,7 @@ from typing import Any, Dict, Literal, Optional
 
 from ...mcp_instance import mcp
 from ...core.api_client import ApiClient
+from ...core.validation import path_segment
 from ...core.error_handler import handle_api_error
 from ...core.log_utils import (
     DEFAULT_MAX_BYTES,
@@ -83,7 +84,7 @@ async def get_publish_step_logs(
 
         api_client = ApiClient()
         raw_text = await api_client.get_text(
-            f"/publish/v2/profiles/{platform_type}/{profile_id}/publish/{publish_id}/step/{step_id}/logs"
+            f"/publish/v2/profiles/{platform_type}/{path_segment(profile_id, 'profile_id')}/publish/{path_segment(publish_id, 'publish_id')}/step/{path_segment(step_id, 'step_id')}/logs"
         )
 
         lines = raw_text.splitlines()

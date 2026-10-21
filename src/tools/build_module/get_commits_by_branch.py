@@ -98,7 +98,7 @@ async def get_commits_by_branch(
         )
 
         api_client = ApiClient()
-        response = await api_client.get("/build/v2/commits/", params=params)
+        response = await api_client.get("/build/v2/commits", params=params)
 
         commits, pagination = _normalize_commits_response(response)
         count = len(commits)

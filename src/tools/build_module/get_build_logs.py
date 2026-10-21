@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional
 
 from ...mcp_instance import mcp
 from ...core.api_client import ApiClient
+from ...core.validation import path_segment
 from ...core.error_handler import handle_api_error
 from ...core.log_utils import (
     DEFAULT_MAX_BYTES,
@@ -74,7 +75,7 @@ async def get_build_logs(
 
         api_client = ApiClient()
         raw_text = await api_client.get_text(
-            f"/build/v2/commits/{commit_id}/builds/{build_id}/logs"
+            f"/build/v2/commits/{path_segment(commit_id, 'commit_id')}/builds/{path_segment(build_id, 'build_id')}/logs"
         )
 
         lines = raw_text.splitlines()

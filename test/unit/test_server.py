@@ -202,6 +202,32 @@ class TestMain:
         assert response.status_code == 200
         assert response.json() == {"status": "ok", "version": __version__}
 
+    def test_initialize_server_info_version_matches_package_version(self):
+        """MCP initialize reports the package version in serverInfo, not the mcp library version."""
+        from starlette.testclient import TestClient
+
+        from src import __version__
+        from src.mcp_instance import mcp
+
+        mcp.settings.streamable_http_path = "/"
+        with TestClient(mcp.streamable_http_app(), base_url="http://localhost:8000") as client:
+            response = client.post(
+                "/",
+                headers={"Accept": "application/json, text/event-stream"},
+                json={
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "initialize",
+                    "params": {
+                        "protocolVersion": "2025-06-18",
+                        "capabilities": {},
+                        "clientInfo": {"name": "test", "version": "1"},
+                    },
+                },
+            )
+        server_info = response.json()["result"]["serverInfo"]
+        assert server_info == {**server_info, "name": "Appcircle MCP", "version": __version__}
+
     def test_health_version_matches_package_metadata(self):
         """GET /health version field is a non-empty string matching the installed package version."""
         from importlib.metadata import version as pkg_version
@@ -218,24 +244,98 @@ class TestMain:
         response = client.get("/health")
         assert response.json()["version"] == pkg_version("appcircle-mcp-server")
 
-    def test_middleware_accepts_bearer_token(self):
-        """Middleware passes through when Authorization: Bearer is present."""
+
+class TestTokenVerificationMiddleware:
+    """Tests for TokenExtractionMiddleware bearer-token verification."""
+
+    @staticmethod
+    def _client():
+        """Middleware in front of a route that echoes the context token seen by ApiClient."""
         from starlette.applications import Starlette
         from starlette.responses import JSONResponse
         from starlette.routing import Route
         from starlette.testclient import TestClient
 
+        from src.core.auth import get_access_token
         from src.server import TokenExtractionMiddleware
 
         async def home(request):
-            return JSONResponse({"ok": True})
+            return JSONResponse({"token": get_access_token()})
 
         app = Starlette(routes=[Route("/", home, methods=["POST"])])
-        app = TokenExtractionMiddleware(app)
-        client = TestClient(app)
-        response = client.post("/", headers={"Authorization": "Bearer test-token"})
+        return TestClient(TokenExtractionMiddleware(app))
+
+    def test_valid_token_passes_and_is_forwarded(self, token_signer):
+        """A valid token reaches the app and is the token used for upstream calls."""
+        token = token_signer.sign()
+        response = self._client().post("/", headers={"Authorization": f"Bearer {token}"})
         assert response.status_code == 200
-        assert response.json() == {"ok": True}
+        assert response.json() == {"token": token}
+
+    def test_http_issuer_token_passes(self, token_signer):
+        """A token whose issuer uses plain http reaches the app."""
+        token = token_signer.sign(issuer="http://auth.example.com/auth/realms/appcircle")
+        response = self._client().post("/", headers={"Authorization": f"Bearer {token}"})
+        assert response.status_code == 200
+        assert response.json() == {"token": token}
+
+    def test_missing_header_returns_401_with_challenge(self, token_signer):
+        """No Authorization header -> 401 with WWW-Authenticate: Bearer."""
+        response = self._client().post("/")
+        assert response.status_code == 401
+        assert response.headers["WWW-Authenticate"] == "Bearer"
+        assert response.json() == {"error": "Missing Authorization header"}
+
+    @pytest.mark.parametrize("auth_value", ["Bearer dummytoken", "Bearer ", "Bearer a.b.c"])
+    def test_malformed_token_returns_401(self, token_signer, auth_value):
+        """Non-JWT bearer values are rejected before reaching the app."""
+        response = self._client().post("/", headers={"Authorization": auth_value})
+        assert response.status_code == 401
+        assert response.headers["WWW-Authenticate"] == "Bearer"
+
+    def test_wrong_issuer_returns_401(self, token_signer):
+        """A token from another realm is rejected."""
+        token = token_signer.sign(issuer="https://auth.example.com/auth/realms/other")
+        response = self._client().post("/", headers={"Authorization": f"Bearer {token}"})
+        assert response.status_code == 401
+        assert response.json() == {"error": "Invalid or expired access token"}
+
+    def test_expired_token_returns_401(self, token_signer):
+        """An expired token is rejected."""
+        token = token_signer.sign(exp_offset=-60)
+        response = self._client().post("/", headers={"Authorization": f"Bearer {token}"})
+        assert response.status_code == 401
+        assert response.json() == {"error": "Invalid or expired access token"}
+
+    def test_mcp_initialize_with_dummy_token_returns_401(self, token_signer):
+        """MCP initialize with a non-JWT bearer value ('Bearer dummytoken') is rejected."""
+        from starlette.testclient import TestClient
+
+        from src.mcp_instance import mcp
+        from src.server import TokenExtractionMiddleware
+
+        mcp.settings.streamable_http_path = "/"
+        app = mcp.streamable_http_app()
+        app.add_middleware(TokenExtractionMiddleware)
+        response = TestClient(app).post(
+            "/",
+            headers={"Authorization": "Bearer dummytoken"},
+            json={"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
+        )
+        assert response.status_code == 401
+
+    def test_protected_resource_metadata_path_skips_auth(self, token_signer):
+        """/.well-known/oauth-protected-resource is not behind auth (no 401)."""
+        from starlette.testclient import TestClient
+
+        from src.mcp_instance import mcp
+        from src.server import TokenExtractionMiddleware
+
+        mcp.settings.streamable_http_path = "/"
+        app = mcp.streamable_http_app()
+        app.add_middleware(TokenExtractionMiddleware)
+        response = TestClient(app).get("/.well-known/oauth-protected-resource")
+        assert response.status_code != 401
 
 
 class TestRunHttpTransportSecurity:

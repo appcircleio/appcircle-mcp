@@ -2,6 +2,8 @@
 from mcp.server.fastmcp import FastMCP
 from mcp.types import Icon
 
+from . import __version__
+
 # Initialize FastMCP
 mcp = FastMCP(
     "Appcircle MCP", 
@@ -16,3 +18,6 @@ mcp = FastMCP(
         )
     ]
 )
+
+# serverInfo.version in the initialize response
+mcp._mcp_server.version = __version__

@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Literal
 
 from ...mcp_instance import mcp
 from ...core.api_client import ApiClient
+from ...core.validation import path_segment
 from ...core.error_handler import handle_api_error
 from ...core.logger import logger
 from ...schemas.responses import success_response
@@ -52,7 +53,7 @@ async def get_publish_flows(
         logger.debug(f"Fetching publish flows - platform_type: {platform_type}, profile_id: {profile_id}")
 
         api_client = ApiClient()
-        response = await api_client.get(f"/publish/v2/profiles/{platform_type}/{profile_id}/publishflows")
+        response = await api_client.get(f"/publish/v2/profiles/{platform_type}/{path_segment(profile_id, 'profile_id')}/publishflows")
 
         data = _normalize_flows_response(response)
         count = len(data)

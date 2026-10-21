@@ -6,6 +6,7 @@ from mcp.types import ToolAnnotations
 
 from ...mcp_instance import mcp
 from ...core.api_client import ApiClient
+from ...core.validation import path_segment
 from ...core.error_handler import handle_write_api_error
 from ...core.logger import logger
 from ...schemas.responses import success_response
@@ -41,7 +42,7 @@ async def cancel_build(task_id: str) -> Dict[str, Any]:
         logger.debug(f"Cancelling build - task_id: {task_id}")
 
         api_client = ApiClient()
-        await api_client.post(f"/build/v3/queue/{task_id}/cancel")
+        await api_client.post(f"/build/v3/queue/{path_segment(task_id, 'task_id')}/cancel")
 
         logger.info(f"Successfully cancelled build task {task_id}")
 

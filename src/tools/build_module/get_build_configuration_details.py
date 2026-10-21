@@ -4,6 +4,7 @@ from typing import Dict, Any
 
 from ...mcp_instance import mcp
 from ...core.api_client import ApiClient
+from ...core.validation import path_segment
 from ...core.error_handler import handle_api_error
 from ...core.logger import logger
 from ...schemas.responses import success_response
@@ -42,7 +43,7 @@ async def get_build_configuration_details(
 
         api_client = ApiClient()
         response = await api_client.get(
-            f"/build/v2/profiles/{profile_id}/configurations/{configuration_id}"
+            f"/build/v2/profiles/{path_segment(profile_id, 'profile_id')}/configurations/{path_segment(configuration_id, 'configuration_id')}"
         )
 
         if not isinstance(response, dict):

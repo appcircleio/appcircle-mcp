@@ -4,6 +4,7 @@ from typing import Dict, Any, Optional
 
 from ...mcp_instance import mcp
 from ...core.api_client import ApiClient
+from ...core.validation import path_segment
 from ...core.error_handler import handle_api_error
 from ...core.logger import logger
 from ...schemas.responses import success_response
@@ -66,7 +67,7 @@ async def get_build_profile_details(
         )
 
         api_client = ApiClient()
-        response = await api_client.get(f"/build/v2/profiles/{profile_id}")
+        response = await api_client.get(f"/build/v2/profiles/{path_segment(profile_id, 'profile_id')}")
 
         # Support raw object or wrapper (e.g. {"data": {...}})
         if isinstance(response, dict):
@@ -80,7 +81,7 @@ async def get_build_profile_details(
 
         if configurations:
             config_response = await api_client.get(
-                f"/build/v2/profiles/{profile_id}/configurations"
+                f"/build/v2/profiles/{path_segment(profile_id, 'profile_id')}/configurations"
             )
             data["configurations"] = _normalize_configurations_response(config_response)
 

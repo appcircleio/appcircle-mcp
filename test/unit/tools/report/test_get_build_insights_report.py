@@ -442,7 +442,7 @@ class TestGetBuildInsightsReportSuccess:
     async def test_workflow_quality_end_to_end(self, mocked_api):
         mocked_api.get("/report/v2/build").mock(return_value=Response(200, json=WORKFLOW_QUALITY_BUILD_HISTORY_RESPONSE))
         mocked_api.get("/build/v2/profiles").mock(return_value=Response(200, json=WORKFLOW_QUALITY_PROFILES_RESPONSE))
-        mocked_api.get("/build/v2/profiles/p1/workflows/").mock(
+        mocked_api.get("/build/v2/profiles/p1/workflows").mock(
             return_value=Response(200, json=WORKFLOW_QUALITY_WORKFLOW_LIST_RESPONSE)
         )
         mocked_api.get("/build/v2/profiles/p1/workflows/push-id").mock(
@@ -495,7 +495,7 @@ class TestGetBuildInsightsReportSuccess:
         # workflow for these profiles in this fixture.
         assert len(profiles_route.calls) == 1
         assert len(triggers_route.calls) == 2  # one per top-5 profile (iOS Build, Android Build)
-        workflow_calls = [c for c in mocked_api.calls if "/workflows/" in str(c.request.url)]
+        workflow_calls = [c for c in mocked_api.calls if "/workflows" in str(c.request.url)]
         assert workflow_calls == []
 
     async def test_workflow_quality_resolves_all_manual_profile_via_trigger_config(self, mocked_api):
@@ -530,7 +530,7 @@ class TestGetBuildInsightsReportSuccess:
         assert entries["Android Build"]["push"] is None
         assert entries["Android Build"]["pr"] is None
         # No workflow-list call needed -- the trigger config already gave the id directly.
-        workflow_list_calls = [c for c in mocked_api.calls if str(c.request.url).endswith("/workflows/")]
+        workflow_list_calls = [c for c in mocked_api.calls if str(c.request.url).endswith("/workflows")]
         assert workflow_list_calls == []
 
     async def test_inactive_profiles_anchored_to_period_end_not_wall_clock_today(self, mocked_api):
@@ -561,7 +561,7 @@ class TestMaturityAssessmentSection:
     def _mock_workflow_quality_fixture(self, mocked_api, pr_configured=True):
         build_route = mocked_api.get("/report/v2/build").mock(return_value=Response(200, json=WORKFLOW_QUALITY_BUILD_HISTORY_RESPONSE))
         profiles_route = mocked_api.get("/build/v2/profiles").mock(return_value=Response(200, json=WORKFLOW_QUALITY_PROFILES_RESPONSE))
-        workflow_list_route = mocked_api.get("/build/v2/profiles/p1/workflows/").mock(
+        workflow_list_route = mocked_api.get("/build/v2/profiles/p1/workflows").mock(
             return_value=Response(200, json=WORKFLOW_QUALITY_WORKFLOW_LIST_RESPONSE)
         )
         mocked_api.get("/build/v2/profiles/p1/workflows/push-id").mock(
@@ -655,7 +655,7 @@ class TestMaturityAssessmentSection:
     async def test_security_section_end_to_end_with_expiring_certificate(self, mocked_api):
         mocked_api.get("/report/v2/build").mock(return_value=Response(200, json=SECURITY_BUILD_HISTORY_RESPONSE))
         mocked_api.get("/build/v2/profiles").mock(return_value=Response(200, json=WORKFLOW_QUALITY_PROFILES_RESPONSE))
-        mocked_api.get("/build/v2/profiles/p1/workflows/").mock(
+        mocked_api.get("/build/v2/profiles/p1/workflows").mock(
             return_value=Response(200, json=WORKFLOW_QUALITY_WORKFLOW_LIST_RESPONSE)
         )
         mocked_api.get("/build/v2/profiles/p1/workflows/push-id").mock(
@@ -836,13 +836,13 @@ class TestGracefulDegradation:
             {"id": "p1", "name": "iOS Build", "lastBuildDate": "2026-01-05T10:00:00Z"},
             {"id": "p2", "name": "Android Build", "lastBuildDate": "2026-01-05T10:00:00Z"},
         ]))
-        mocked_api.get("/build/v2/profiles/p1/workflows/").mock(
+        mocked_api.get("/build/v2/profiles/p1/workflows").mock(
             return_value=Response(200, json=[{"id": "push-id", "workflowName": "Default Push Workflow"}])
         )
         mocked_api.get("/build/v2/profiles/p1/workflows/push-id").mock(
             return_value=Response(200, json={"workflowName": "Default Push Workflow", "workflowDocument": WORKFLOW_QUALITY_PUSH_YAML})
         )
-        mocked_api.get("/build/v2/profiles/p2/workflows/").mock(
+        mocked_api.get("/build/v2/profiles/p2/workflows").mock(
             return_value=Response(200, json=[{"id": "push-id-2", "workflowName": "Default Push Workflow"}])
         )
         mocked_api.get("/build/v2/profiles/p2/workflows/push-id-2").mock(
@@ -868,7 +868,7 @@ class TestGracefulDegradation:
     async def test_certificates_401_omits_security_not_falsely_clean(self, mocked_api):
         mocked_api.get("/report/v2/build").mock(return_value=Response(200, json=SECURITY_BUILD_HISTORY_RESPONSE))
         mocked_api.get("/build/v2/profiles").mock(return_value=Response(200, json=WORKFLOW_QUALITY_PROFILES_RESPONSE))
-        mocked_api.get("/build/v2/profiles/p1/workflows/").mock(
+        mocked_api.get("/build/v2/profiles/p1/workflows").mock(
             return_value=Response(200, json=WORKFLOW_QUALITY_WORKFLOW_LIST_RESPONSE)
         )
         mocked_api.get("/build/v2/profiles/p1/workflows/push-id").mock(

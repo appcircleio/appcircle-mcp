@@ -4,6 +4,7 @@ from typing import Dict, Any, List
 
 from ...mcp_instance import mcp
 from ...core.api_client import ApiClient
+from ...core.validation import path_segment
 from ...core.error_handler import handle_api_error
 from ...core.logger import logger
 from ...schemas.responses import success_response
@@ -43,7 +44,7 @@ async def get_build_profile_workflows(profile_id: str) -> Dict[str, Any]:
         logger.debug(f"Fetching build profile workflows - profile_id: {profile_id}")
 
         api_client = ApiClient()
-        response = await api_client.get(f"/build/v2/profiles/{profile_id}/workflows/")
+        response = await api_client.get(f"/build/v2/profiles/{path_segment(profile_id, 'profile_id')}/workflows")
 
         workflows = _normalize_workflows_response(response)
         count = len(workflows)

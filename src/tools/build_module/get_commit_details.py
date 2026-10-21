@@ -4,6 +4,7 @@ from typing import Dict, Any, Optional
 
 from ...mcp_instance import mcp
 from ...core.api_client import ApiClient
+from ...core.validation import path_segment
 from ...core.error_handler import handle_api_error
 from ...core.logger import logger
 from ...schemas.responses import success_response, error_response
@@ -66,7 +67,9 @@ async def get_commit_details(
         )
 
         api_client = ApiClient()
-        response = await api_client.get(f"/build/v2/commits/{identifier}")
+        response = await api_client.get(
+            f"/build/v2/commits/{path_segment(identifier, 'commit_id' if by_id else 'commit_hash')}"
+        )
 
         if isinstance(response, dict):
             data = response.get("data") or response.get("commit") or response
